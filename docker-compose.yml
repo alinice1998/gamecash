@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gamecash_app
+    ports:
+      - "80:80"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=gamecash
+      - DB_USER=gamecash_user
+      - DB_PASS=gamecash_pass
+    depends_on:
+      - db
+    restart: always
+
+  db:
+    image: mysql:8.0
+    container_name: gamecash_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: gamecash
+      MYSQL_USER: gamecash_user
+      MYSQL_PASSWORD: gamecash_pass
+      MYSQL_RANDOM_ROOT_PASSWORD: 'yes'
+    volumes:
+      - db_data:/var/lib/mysql
+      # استيراد قاعدة البيانات تلقائياً عند أول تشغيل للحاوية
+      - ./gamecash-backend/config/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    ports:
+      - "3306:3306"
+
+volumes:
+  db_data:

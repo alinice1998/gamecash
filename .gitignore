@@ -1,0 +1,26 @@
+# Flutter / Mobile ignores
+gamecash-mobile/.dart_tool/
+gamecash-mobile/.flutter-plugins
+gamecash-mobile/.flutter-plugins-dependencies
+gamecash-mobile/.packages
+gamecash-mobile/build/
+gamecash-mobile/ios/Flutter/Flutter.podspec
+gamecash-mobile/ios/Flutter/GeneratedPluginRegistrant.h
+gamecash-mobile/ios/Flutter/GeneratedPluginRegistrant.m
+gamecash-mobile/ios/Flutter/app.flx
+gamecash-mobile/ios/Flutter/app.zip
+gamecash-mobile/ios/Flutter/flutter_assets/
+gamecash-mobile/ios/Flutter/flutter_export_environment.sh
+gamecash-mobile/android/local.properties
+gamecash-mobile/android/key.properties
+gamecash-mobile/android/app/src/main/res/values/strings.xml
+
+# IDE and general ignores
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+scratch/

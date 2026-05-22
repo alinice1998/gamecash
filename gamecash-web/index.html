@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameCash - إدارة صالة الألعاب والمالية</title>
+    
+    <!-- Meta tags for SEO & Theme -->
+    <meta name="description" content="نظام احترافي لإدارة صالات الألعاب والديون والمبيعات وتحويل رصيد شركات الاتصالات والمصاريف">
+    <meta name="theme-color" content="#0d0e15">
+
+    <!-- Fonts: Cairo (Arabic) & Outfit (Numbers/English) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Local Offline-Compatible Libraries (SweetAlert2 & Chart.js) -->
+    <script src="js/lib/sweetalert2.all.min.js"></script>
+    <script src="js/lib/chart.min.js"></script>
+    
+    <!-- Robust Offline Fallback for Libraries -->
+    <script>
+        if (typeof Swal === 'undefined') {
+            console.warn("SweetAlert2 is not loaded. Activating fallback notifications.");
+            window.Swal = {
+                fire: function(options) {
+                    return new Promise((resolve) => {
+                        const title = options.title || '';
+                        const text = options.text || '';
+                        
+                        if (options.input === 'text' || options.html) {
+                            alert("خطأ: تعذر تحميل واجهة الإدخال المتقدمة لأن مكتبة SweetAlert2 غير متوفرة.");
+                            resolve({ dismiss: 'error' });
+                            return;
+                        }
+
+                        if (options.showCancelButton) {
+                            const result = confirm(`${title}\n\n${text}`);
+                            resolve({ isConfirmed: result, isDismissed: !result });
+                        } else {
+                            alert(`${title}\n\n${text}`);
+                            resolve({ isConfirmed: true });
+                        }
+                    });
+                },
+                showValidationMessage: function(msg) {
+                    alert(msg);
+                }
+            };
+        }
+    </script>
+
+    <!-- Custom Premium Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- 1. LOGIN OVERLAY (Shows when not authenticated) -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card glass-panel">
+            <div class="login-header">
+                <div class="login-logo-container">
+                    <i class="fa-solid fa-gamepad logo-icon-glow"></i>
+                </div>
+                <h2>GameCash</h2>
+                <p>نظام إدارة صالة الألعاب والديون</p>
+            </div>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-username"><i class="fa-solid fa-user"></i> اسم المستخدم</label>
+                    <input type="text" id="login-username" placeholder="أدخل اسم المستخدم" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-password"><i class="fa-solid fa-lock"></i> كلمة المرور</label>
+                    <input type="password" id="login-password" placeholder="أدخل كلمة المرور" required autocomplete="current-password">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block" id="login-btn">
+                    <span>تسجيل الدخول</span>
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. MAIN APPLICATION SHELL -->
+    <div id="app-shell" class="app-shell hidden">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-coins brand-icon"></i>
+                <span>GameCash</span>
+            </div>
+            
+            <div class="user-profile-badge">
+                <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
+                <div class="user-details">
+                    <span class="user-name" id="display-username">المسؤول</span>
+                    <span class="user-role">مدير النظام</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item active" data-tab="dashboard">
+                        <a href="#"><i class="fa-solid fa-chart-pie"></i> <span>لوحة التحكم</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="sales">
+                        <a href="#"><i class="fa-solid fa-cart-shopping"></i> <span>عملية بيع جديدة</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="customers">
+                        <a href="#"><i class="fa-solid fa-users"></i> <span>العملاء والديون</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="products">
+                        <a href="#"><i class="fa-solid fa-cubes"></i> <span>المخزن والمبيعات</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="telecom">
+                        <a href="#"><i class="fa-solid fa-mobile-screen-button"></i> <span>تحويل الرصيد</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="expenses">
+                        <a href="#"><i class="fa-solid fa-wallet"></i> <span>المصاريف اليومية</span></a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="btn btn-outline-danger btn-block">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>تسجيل الخروج</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN VIEW CONTENT -->
+        <main class="main-content">
+            
+            <!-- HEADER -->
+            <header class="main-header glass-panel">
+                <div class="header-title">
+                    <button class="mobile-toggle-btn" id="mobile-toggle"><i class="fa-solid fa-bars"></i></button>
+                    <h1 id="view-title">لوحة التحكم</h1>
+                </div>
+                
+                <!-- CASH SAFE MONITOR -->
+                <div class="cash-safe-monitor glass-panel" id="safe-monitor-card">
+                    <div class="safe-info">
+                        <span class="safe-label">الصندوق (الخزنة نقداً)</span>
+                        <span class="safe-value" id="header-cash-safe">0.00 <span class="currency">ل.س</span></span>
+                    </div>
+                    <div class="safe-icon-box">
+                        <i class="fa-solid fa-vault safe-vault-icon"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- VIEW PANES CONTAINER -->
+            <div class="view-panes">
+                
+                <!-- VIEW 1: DASHBOARD -->
+                <section id="pane-dashboard" class="tab-pane active">
+                    <!-- Dashboard Cards -->
+                    <div class="stats-grid">
+                        <div class="stats-card card-safe glass-panel">
+                            <div class="card-body">
+                                <h3>رصيد الخزنة الفعلي</h3>
+                                <div class="value number-font" id="dash-cash-safe">0.00</div>
+                                <p>متوفر نقداً في الدرج حالياً</p>
+                            </div>
+                            <div class="card-icon"><i class="fa-solid fa-cash-register"></i></div>
+                        </div>
+
+                        <div class="stats-card card-debt glass-panel">
+                            <div class="card-body">
+                                <h3>الديون الكلية المطلوبة</h3>
+                                <div class="value number-font" id="dash-total-debts">0.00</div>
+                                <p>مجموع المبالغ المتبقية على العملاء</p>
+                            </div>
+                            <div class="card-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                        </div>
+
+                        <div class="stats-card card-sales glass-panel">
+                            <div class="card-body">
+                                <h3>مبيعات اليوم</h3>
+                                <div class="value number-font" id="dash-today-sales">0.00</div>
+                                <div class="sales-breakdown">
+                                    <span>كاش: <b id="dash-today-cash-sales" class="number-font">0</b></span>
+                                    <span>دين: <b id="dash-today-debt-sales" class="number-font">0</b></span>
+                                </div>
+                            </div>
+                            <div class="card-icon"><i class="fa-solid fa-receipt"></i></div>
+                        </div>
+
+                        <div class="stats-card card-surplus glass-panel">
+                            <div class="card-body">
+                                <h3>صافي حركة الصندوق اليوم</h3>
+                                <div class="value number-font" id="dash-today-net-cash">0.00</div>
+                                <p>المقبوضات مطروحاً منها المصاريف</p>
+                            </div>
+                            <div class="card-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                        </div>
+                    </div>
+
+                    <!-- Low Stock Alerts -->
+                    <div id="low-stock-alert-bar" class="alert-bar glass-panel hidden">
+                        <div class="alert-content">
+                            <i class="fa-solid fa-triangle-exclamation alert-icon"></i>
+                            <span id="low-stock-alert-text">تنبيه! هناك منتجات شارفت على النفاد في المستودع.</span>
+                        </div>
+                        <button class="btn btn-sm btn-outline-warning" id="view-low-stock-btn">معاينة</button>
+                    </div>
+
+                    <!-- Charts & Recent Activity -->
+                    <div class="dashboard-grid">
+                        
+                        <!-- Financial Performance Chart -->
+                        <div class="grid-col glass-panel">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-chart-line"></i> الأداء المالي (المبيعات والمصاريف خلال 7 أيام)</h2>
+                            </div>
+                            <div class="panel-body chart-container">
+                                <canvas id="financialsChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Quick Operations and Daily Logs -->
+                        <div class="grid-col glass-panel">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-clock-rotate-left"></i> آخر النشاطات اليومية</h2>
+                            </div>
+                            <div class="panel-body">
+                                <div class="tabs-subnav">
+                                    <button class="sub-tab active" data-subtab="recent-sales">المبيعات الأخيرة</button>
+                                    <button class="sub-tab" data-subtab="recent-payoffs">سداد الديون</button>
+                                    <button class="sub-tab" data-subtab="recent-expenses">المصاريف</button>
+                                </div>
+
+                                <div class="subtab-content" id="subtab-recent-sales">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>العميل</th>
+                                                    <th>الإجمالي</th>
+                                                    <th>المدفوع</th>
+                                                    <th>الدين</th>
+                                                    <th>التاريخ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="recent-sales-list">
+                                                <tr><td colspan="5" class="text-center">لا توجد مبيعات مسجلة اليوم.</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="subtab-content hidden" id="subtab-recent-payoffs">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>العميل</th>
+                                                    <th>المبلغ المسدد</th>
+                                                    <th>ملاحظات</th>
+                                                    <th>التاريخ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="recent-payments-list">
+                                                <tr><td colspan="4" class="text-center">لا توجد عمليات سداد اليوم.</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="subtab-content hidden" id="subtab-recent-expenses">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>الفئة</th>
+                                                    <th>المبلغ</th>
+                                                    <th>الملاحظات</th>
+                                                    <th>التاريخ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="recent-expenses-list">
+                                                <tr><td colspan="4" class="text-center">لا توجد مصاريف مسجلة اليوم.</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- VIEW 2: NEW SALE -->
+                <section id="pane-sales" class="tab-pane">
+                    <div class="sales-checkout-grid">
+                        
+                        <!-- Left Panel: Shopping Cart Items -->
+                        <div class="checkout-cart glass-panel">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-basket-shopping"></i> سلة الفاتورة الحالية</h2>
+                                <button class="btn btn-sm btn-outline-danger" id="clear-cart-btn"><i class="fa-solid fa-trash-can"></i> إفراغ السلة</button>
+                            </div>
+                            
+                            <div class="cart-items-wrapper">
+                                <div class="cart-empty-state" id="cart-empty">
+                                    <i class="fa-solid fa-cart-plus"></i>
+                                    <p>السلة فارغة حالياً. أضف أكلات أو تحويلات رصيد أو خدمات يدوية من اللوحة الجانبية.</p>
+                                </div>
+                                <div class="cart-items-list hidden" id="cart-items">
+                                    <!-- Items will be generated here -->
+                                </div>
+                            </div>
+
+                            <div class="cart-summary-section">
+                                <div class="summary-row">
+                                    <span>المجموع الكلي:</span>
+                                    <span class="summary-total number-font" id="cart-total">0.00 ل.س</span>
+                                </div>
+                                
+                                <form id="checkout-form">
+                                    <div class="payment-method-selectors">
+                                        <div class="method-option">
+                                            <input type="radio" id="pay-cash-only" name="payment_type" value="cash" checked>
+                                            <label for="pay-cash-only">
+                                                <i class="fa-solid fa-money-bill-wave"></i>
+                                                <span>دفع كاش بالكامل</span>
+                                            </label>
+                                        </div>
+                                        <div class="method-option">
+                                            <input type="radio" id="pay-debt-only" name="payment_type" value="debt">
+                                            <label for="pay-debt-only">
+                                                <i class="fa-solid fa-user-minus"></i>
+                                                <span>تسجيل كدين بالكامل</span>
+                                            </label>
+                                        </div>
+                                        <div class="method-option">
+                                            <input type="radio" id="pay-split" name="payment_type" value="split">
+                                            <label for="pay-split">
+                                                <i class="fa-solid fa-right-left"></i>
+                                                <span>دفع كاش + دين</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Customer Selector (Visible if Debt or Split is selected) -->
+                                    <div class="form-group hidden" id="checkout-customer-group">
+                                        <label for="cart-customer"><i class="fa-solid fa-user"></i> اختر العميل المدين *</label>
+                                        <div class="select-with-btn">
+                                            <select id="cart-customer">
+                                                <option value="">-- اختر عميلاً من القائمة --</option>
+                                            </select>
+                                            <button type="button" class="btn btn-primary" id="btn-quick-add-customer"><i class="fa-solid fa-user-plus"></i></button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Split Payment Inputs -->
+                                    <div class="split-inputs-row hidden" id="checkout-split-group">
+                                        <div class="form-group">
+                                            <label for="cart-paid-amount">المدفوع كاش نقداً</label>
+                                            <input type="number" id="cart-paid-amount" class="number-font" min="0" placeholder="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cart-debt-amount">المتبقي دين على العميل</label>
+                                            <input type="number" id="cart-debt-amount" class="number-font" readonly placeholder="0">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="cart-notes"><i class="fa-solid fa-note-sticky"></i> ملاحظات الفاتورة</label>
+                                        <textarea id="cart-notes" rows="2" placeholder="ملاحظات اختيارية..."></textarea>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-success btn-block btn-lg" id="checkout-btn" disabled>
+                                        <i class="fa-solid fa-circle-check"></i>
+                                        <span>تأكيد وطباعة عملية البيع</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Items Catalog -->
+                        <div class="checkout-catalog glass-panel">
+                            <div class="tabs-subnav">
+                                <button class="catalog-tab active" data-catalog="snacks">الأكلات والمشروبات</button>
+                                <button class="catalog-tab" data-catalog="telecom">تحويل رصيد</button>
+                                <button class="catalog-tab" data-catalog="custom">بند/لعب مخصص</button>
+                            </div>
+
+                            <!-- Panel A: Snacks Grid -->
+                            <div class="catalog-pane" id="catalog-snacks">
+                                <div class="catalog-search-bar">
+                                    <div class="search-input-wrapper">
+                                        <i class="fa-solid fa-magnifying-glass"></i>
+                                        <input type="text" id="catalog-snacks-search" placeholder="ابحث عن مشروب أو وجبة...">
+                                    </div>
+                                </div>
+                                <div class="products-catalog-grid" id="catalog-snacks-grid">
+                                    <!-- Dynamic snack cards -->
+                                </div>
+                            </div>
+
+                            <!-- Panel B: Telecom Form -->
+                            <div class="catalog-pane hidden" id="catalog-telecom">
+                                <div class="telecom-cart-creator">
+                                    <h3><i class="fa-solid fa-mobile-screen-button"></i> إضافة تحويل رصيد للسلة</h3>
+                                    <form id="telecom-cart-form">
+                                        <div class="form-group">
+                                            <label for="tel-company">شركة الاتصالات</label>
+                                            <select id="tel-company" required>
+                                                <option value="">-- اختر شركة اتصالات --</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="tel-phone">رقم الهاتف المراد التحويل إليه</label>
+                                            <input type="text" id="tel-phone" class="number-font text-left" placeholder="09xxxxxxxx" required pattern="[0-9]{9,15}">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="tel-amount">مبلغ الرصيد للتحويل (مثلاً 5000 وحدة)</label>
+                                            <input type="number" id="tel-amount" class="number-font" placeholder="أدخل فئة الشحن" required min="1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="tel-price">السعر المطلوب من الزبون (مثلاً 5500 ل.س)</label>
+                                            <input type="number" id="tel-price" class="number-font" placeholder="السعر المحتسب للزبون" required min="1">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-block">
+                                            <i class="fa-solid fa-plus"></i>
+                                            <span>أضف تحويل الرصيد للسلة</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Panel C: Custom Dynamic Item -->
+                            <div class="catalog-pane hidden" id="catalog-custom">
+                                <div class="custom-item-creator">
+                                    <h3><i class="fa-solid fa-circle-plus"></i> إضافة خدمة أو لعب مخصص يدوياً</h3>
+                                    <p>استخدم هذا التبويب لإدخال حساب وقت اللعب أو أي خدمات لم يتم تخزينها في المستودع سابقاً.</p>
+                                    <form id="custom-cart-form">
+                                        <div class="form-group">
+                                            <label for="cust-name">اسم الخدمة أو اللعب</label>
+                                            <input type="text" id="cust-name" placeholder="مثال: لعب PS5 غرف VIP عدد 3 ساعات" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cust-price">السعر المحتسب (ل.س)</label>
+                                            <input type="number" id="cust-price" class="number-font" placeholder="أدخل السعر الإجمالي" required min="1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cust-qty">الكمية</label>
+                                            <input type="number" id="cust-qty" class="number-font" value="1" min="1" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-block">
+                                            <i class="fa-solid fa-plus"></i>
+                                            <span>أضف البند المخصص للسلة</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 3: CUSTOMERS & DEBTS -->
+                <section id="pane-customers" class="tab-pane">
+                    <div class="grid-two-columns">
+                        
+                        <!-- Left Panel: Customers Directory & Debt Totals -->
+                        <div class="panel-large glass-panel">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-address-book"></i> دليل العملاء والديون القائمة</h2>
+                                <button class="btn btn-primary" id="btn-add-customer"><i class="fa-solid fa-user-plus"></i> إضافة عميل جديد</button>
+                            </div>
+                            
+                            <div class="search-and-filter">
+                                <div class="search-input-wrapper">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" id="customers-search" placeholder="ابحث باسم الزبون أو رقم الهاتف...">
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>الاسم</th>
+                                            <th>الهاتف</th>
+                                            <th>إجمالي الدين القائم</th>
+                                            <th>خيارات التحكم</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="customers-table-body">
+                                        <!-- Will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Payoff Debt & History -->
+                        <div class="panel-small glass-panel">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-money-bill-transfer"></i> تسديد الديون (دفعات سداد كاش)</h2>
+                            </div>
+                            
+                            <div class="payoff-form-wrapper">
+                                <form id="payoff-form">
+                                    <div class="form-group">
+                                        <label for="payoff-customer">اختر العميل المسدد *</label>
+                                        <select id="payoff-customer" required>
+                                            <option value="">-- اختر عميلاً لسداد دينه --</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="customer-debt-preview hidden" id="payoff-debt-preview-box">
+                                        <span>الدين الحالي المترتب عليه:</span>
+                                        <strong id="payoff-current-debt-val" class="number-font">0.00 ل.س</strong>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="payoff-amount">المبلغ المدفوع كاش (ل.س) *</label>
+                                        <input type="number" id="payoff-amount" class="number-font" placeholder="أدخل مبلغ السداد" required min="1">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="payoff-notes">ملاحظات سداد الدين</label>
+                                        <input type="text" id="payoff-notes" placeholder="ملاحظات (مثال: دفعة من الحساب)">
+                                    </div>
+
+                                    <button type="submit" class="btn btn-success btn-block" id="payoff-submit-btn" disabled>
+                                        <i class="fa-solid fa-cash-register"></i>
+                                        <span>تأكيد عملية السداد نقداً</span>
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div class="payoff-history-section">
+                                <h3>آخر 10 عمليات سداد كاش للديون</h3>
+                                <div class="payoff-logs-list" id="payoff-logs-list">
+                                    <!-- Payoff history timeline -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 4: PRODUCTS INVENTORY -->
+                <section id="pane-products" class="tab-pane">
+                    <div class="panel-large glass-panel">
+                        <div class="panel-header">
+                            <h2><i class="fa-solid fa-boxes-stacked"></i> مخزن المأكولات والمشروبات (متابعة المخزون)</h2>
+                            <button class="btn btn-primary" id="btn-add-product"><i class="fa-solid fa-plus-circle"></i> إضافة منتج جديد للمخزن</button>
+                        </div>
+                        
+                        <div class="inventory-controls-header">
+                            <div class="search-input-wrapper">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="inventory-search" placeholder="ابحث باسم المنتج أو الفئة...">
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>اسم المنتج</th>
+                                        <th>الفئة</th>
+                                        <th>سعر الشراء</th>
+                                        <th>سعر البيع</th>
+                                        <th>هامش الربح المتوقع</th>
+                                        <th>المخزون المتوفر</th>
+                                        <th>حالة المخزون</th>
+                                        <th>خيارات التحكم</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-table-body">
+                                    <!-- Loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 5: TELECOM LOGS -->
+                <section id="pane-telecom" class="tab-pane">
+                    <div class="panel-large glass-panel">
+                        <div class="panel-header">
+                            <h2><i class="fa-solid fa-mobile-screen"></i> عمليات تحويل رصيد الاتصالات</h2>
+                            <button class="btn btn-primary" id="btn-add-telecom-company"><i class="fa-solid fa-plus"></i> إضافة شركة اتصال جديدة</button>
+                        </div>
+
+                        <div class="telecom-summary-boxes">
+                            <div class="tel-summary-card glass-panel text-center">
+                                <h4>شركات الاتصالات المدعومة</h4>
+                                <div class="companies-row-badges" id="telecom-companies-row">
+                                    <!-- Badges will be generated -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel-subheader-title">
+                            <h3><i class="fa-solid fa-receipt"></i> سجل عمليات شحن الرصيد للزبائن</h3>
+                            <p>يعرض هذا السجل جميع التحويلات التي تمت عبر سلات المبيعات.</p>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>الشركة</th>
+                                        <th>رقم الهاتف المشحون</th>
+                                        <th>الرصيد المشحون</th>
+                                        <th>السعر للزبون</th>
+                                        <th>الربح</th>
+                                        <th>تاريخ العملية</th>
+                                        <th>الفاتورة المرتبطة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="telecom-logs-table-body">
+                                    <!-- Loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 6: DAILY EXPENSES -->
+                <section id="pane-expenses" class="tab-pane">
+                    <div class="grid-two-columns">
+                        
+                        <!-- Left Panel: Log New Expense -->
+                        <div class="panel-small glass-panel">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-file-invoice-dollar"></i> تسجيل مصروف يومي جديد</h2>
+                            </div>
+                            <div class="panel-body">
+                                <form id="expense-form">
+                                    <div class="form-group">
+                                        <label for="exp-category">فئة المصروف *</label>
+                                        <select id="exp-category" required>
+                                            <option value="">-- اختر الفئة المناسبة --</option>
+                                            <option value="شراء بضاعة للمستودع">شراء بضاعة ومشروبات للمستودع</option>
+                                            <option value="كهرباء ومولدات">فواتير كهرباء ومحروقات مولدات</option>
+                                            <option value="إيجار وتراخيص">إيجار المحل أو تراخيص</option>
+                                            <option value="أجور وعمال">أجور ورواتب الموظفين والعمال</option>
+                                            <option value="صيانة ومعدات">صيانة أجهزة وأثاث صالة ألعاب</option>
+                                            <option value="ضيافة ونظافة">ضيافة زبائن ونظافة الصالة</option>
+                                            <option value="مصاريف أخرى">مصاريف عامة أخرى</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="exp-amount">مبلغ المصروف كاش (ل.س) *</label>
+                                        <input type="number" id="exp-amount" class="number-font" placeholder="أدخل قيمة الفاتورة المصروفة" required min="1">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="exp-notes">ملاحظات توضيحية للفاتورة</label>
+                                        <textarea id="exp-notes" rows="3" placeholder="أدخل تفاصيل المصروف الإضافية (مثال: صيانة جهاز PS5 رقم 3)"></textarea>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-danger btn-block">
+                                        <i class="fa-solid fa-wallet"></i>
+                                        <span>تأكيد وخصم المصروف من الصندوق</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Expenses Log History -->
+                        <div class="panel-large glass-panel">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-clipboard-list"></i> سجل المصاريف المصروفة مؤخراً</h2>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>الفئة والتصنيف</th>
+                                            <th>القيمة</th>
+                                            <th>الملاحظات والتوضيح</th>
+                                            <th>التاريخ</th>
+                                            <th>خيارات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="expenses-table-body">
+                                        <!-- Loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Application Javascript Entry Points -->
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
