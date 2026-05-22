@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../helpers/number_helper.dart';
+
 class StepperWidget extends StatefulWidget {
   final double value;
   final double step;
@@ -62,7 +64,7 @@ class _StepperWidgetState extends State<StepperWidget> {
   }
 
   void _validateAndSubmit(String text) {
-    double parsedVal = double.tryParse(text) ?? widget.value;
+    double parsedVal = NumberHelper.tryParseDouble(text) ?? widget.value;
     if (parsedVal < widget.min) parsedVal = widget.min;
     if (parsedVal > widget.max) parsedVal = widget.max;
 
@@ -152,7 +154,7 @@ class _StepperWidgetState extends State<StepperWidget> {
                     fontWeight: FontWeight.bold,
                   ),
                   inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9٠-٩۰-۹]')),
                   ],
                   decoration: InputDecoration(
                     border: InputBorder.none,

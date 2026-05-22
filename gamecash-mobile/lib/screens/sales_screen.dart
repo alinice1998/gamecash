@@ -8,6 +8,7 @@ import '../models/telecom_company.dart';
 import '../models/cart_item.dart';
 import '../widgets/glassmorphic_card.dart';
 import '../widgets/stepper_widget.dart';
+import '../helpers/number_helper.dart';
 import 'settings_screen.dart';
 
 class SalesScreen extends StatefulWidget {
@@ -132,8 +133,8 @@ class _SalesScreenState extends State<SalesScreen> {
         type: CartItemType.telecom,
         telecomCompanyId: _selectedTelecomCompany!.id,
         name: 'شحن رصيد - ${_selectedTelecomCompany!.name}',
-        telecomPhone: _telecomPhoneController.text.trim(),
-        telecomAmount: double.tryParse(_telecomAmountController.text) ?? 0.0,
+        telecomPhone: NumberHelper.normalizeDigits(_telecomPhoneController.text.trim()),
+        telecomAmount: NumberHelper.tryParseDouble(_telecomAmountController.text) ?? 0.0,
         quantity: 1,
         pricePerUnit: _telecomPrice,
       ));
@@ -283,7 +284,7 @@ class _SalesScreenState extends State<SalesScreen> {
                             try {
                               final newCust = await _apiService.createCustomer(
                                 nameController.text.trim(),
-                                phoneController.text.trim().isNotEmpty ? phoneController.text.trim() : null,
+                                phoneController.text.trim().isNotEmpty ? NumberHelper.normalizeDigits(phoneController.text.trim()) : null,
                               );
 
                               // Success
@@ -352,7 +353,8 @@ class _SalesScreenState extends State<SalesScreen> {
         _showAlertDialog('بيانات تحويل ناقصة!', 'يرجى كتابة رقم الهاتف لتحويل الرصيد.', Colors.orangeAccent);
         return;
       }
-      if (double.tryParse(_telecomAmountController.text) == null || double.parse(_telecomAmountController.text) <= 0) {
+      final parsedAmount = NumberHelper.tryParseDouble(_telecomAmountController.text);
+      if (parsedAmount == null || parsedAmount <= 0) {
         _showAlertDialog('بيانات تحويل ناقصة!', 'يرجى كتابة مبلغ الرصيد المراد تحويله بشكل صحيح.', Colors.orangeAccent);
         return;
       }
@@ -1018,7 +1020,7 @@ class _SalesScreenState extends State<SalesScreen> {
                                     onChanged: (val) {
                                       setState(() {
                                         _isPaidCashManuallyEdited = true;
-                                        _paidCash = double.tryParse(val) ?? 0.0;
+                                        _paidCash = NumberHelper.tryParseDouble(val) ?? 0.0;
                                       });
                                     },
                                   ),
