@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="100" fill="#0d0e15"/>
+  <!-- Glowing gradient background circle -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="url(#accent-grad)" stroke-width="12" style="filter: drop-shadow(0px 0px 20px rgba(0, 210, 255, 0.4));"/>
+  <!-- Gamepad icon -->
+  <path d="M376 180H136c-39.7 0-72 32.3-72 72v48c0 39.7 32.3 72 72 72h240c39.7 0 72-32.3 72-72v-48c0-39.7-32.3-72-72-72zm-184 104h-24v24c0 6.6-5.4 12-12 12s-12-5.4-12-12v-24h-24c-6.6 0-12-5.4-12-12s5.4-12 12-12h24v-24c0-6.6 5.4-12 12-12s12 5.4 12 12v24h24c6.6 0 12 5.4 12 12s-5.4 12-12 12zm160-4c-11 0-20-9-20-20s9-20 20-20 20 9 20 20-9 20-20 20zm32 32c-11 0-20-9-20-20s9-20 20-20 20 9 20 20-9 20-20 20z" fill="url(#accent-grad)" style="filter: drop-shadow(0px 0px 15px rgba(0, 210, 255, 0.6));"/>
+  <!-- Coins icon overlapping bottom right -->
+  <g transform="translate(280, 260) scale(0.35)" style="filter: drop-shadow(0px 0px 12px rgba(0, 255, 135, 0.7));">
+    <circle cx="150" cy="150" r="120" fill="#0d0e15" stroke="url(#green-grad)" stroke-width="24"/>
+    <path d="M120 90h60v20h-60zm0 40h60v20h-60zm-20-80h100v120H100z" fill="none"/>
+    <!-- Dollar / Coin details -->
+    <text x="150" y="180" font-family="'Cairo', sans-serif" font-weight="900" font-size="110" fill="url(#green-grad)" text-anchor="middle">$</text>
+  </g>
+  <defs>
+    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D2FF"/>
+      <stop offset="100%" stop-color="#00FF87"/>
+    </linearGradient>
+    <linearGradient id="green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00FF87"/>
+      <stop offset="100%" stop-color="#60efff"/>
+    </linearGradient>
+  </defs>
+</svg>

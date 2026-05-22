@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Viewport-based Desktop Redirection -->
+    <script>
+        if (window.innerWidth > 768 && !/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+            window.location.replace('index.html');
+        }
+    </script>
+
+    <title>GameCash - واجهة الموبايل الذكية</title>
+    
+    <!-- Meta tags for PWA & SEO -->
+    <meta name="description" content="واجهة موبايل متكاملة لنظام إدارة صالة الألعاب والمالية GameCash">
+    <meta name="theme-color" content="#0d0e15">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <!-- Fonts: Cairo (Arabic) & Outfit (Numbers/English) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Local Offline-Compatible Libraries -->
+    <script src="js/lib/sweetalert2.all.min.js"></script>
+    <script src="js/lib/chart.min.js"></script>
+    
+    <!-- Robust Offline Fallback for Libraries -->
+    <script>
+        if (typeof Swal === 'undefined') {
+            console.warn("SweetAlert2 is not loaded. Activating fallback notifications.");
+            window.Swal = {
+                fire: function(options) {
+                    return new Promise((resolve) => {
+                        alert(options.title + "\n" + (options.text || ""));
+                        resolve({ isConfirmed: true });
+                    });
+                }
+            };
+        }
+    </script>
+
+    <!-- Application Stylesheets -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/mobile.css">
+</head>
+<body class="mobile-body">
+    <!-- Login Overlay (Fully Integrated PWA Login) -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card glass-panel">
+            <div class="login-header">
+                <div class="login-logo-container">
+                    <i class="fa-solid fa-gamepad logo-icon-glow"></i>
+                </div>
+                <h2>GameCash Mobile</h2>
+                <p>نظام إدارة صالة الألعاب والمالية</p>
+            </div>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-username"><i class="fa-solid fa-user"></i> اسم المستخدم</label>
+                    <input type="text" id="login-username" required placeholder="أدخل اسم المستخدم">
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-password"><i class="fa-solid fa-lock"></i> كلمة المرور</label>
+                    <input type="password" id="login-password" required placeholder="أدخل كلمة المرور">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block" id="login-btn">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    <span>تسجيل الدخول</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Standalone Mobile App Shell -->
+    <div id="app-shell" class="app-shell hidden">
+        
+        <!-- Mobile Sidebar Drawer (Slides in on clicking "More") -->
+        <aside class="sidebar" id="mobile-sidebar">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-coins brand-icon"></i>
+                <span>GameCash</span>
+            </div>
+            
+            <div class="user-profile-badge">
+                <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
+                <div class="user-details">
+                    <span class="user-name" id="display-username">المسؤول</span>
+                    <span class="user-role">مدير الصالة</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item active" data-tab="sales">
+                        <a href="#"><i class="fa-solid fa-cart-shopping"></i> <span>البيع السريع</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="dashboard">
+                        <a href="#"><i class="fa-solid fa-chart-pie"></i> <span>لوحة التحكم</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="customers">
+                        <a href="#"><i class="fa-solid fa-users"></i> <span>العملاء والديون</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="expenses">
+                        <a href="#"><i class="fa-solid fa-wallet"></i> <span>المصاريف اليومية</span></a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="btn btn-outline-danger btn-block">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>تسجيل الخروج</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- Dynamic Mobile App Header -->
+            <header class="main-header glass-panel">
+                <div class="header-title">
+                    <h1 id="mobile-header-title">البيع السريع</h1>
+                </div>
+                
+                <div class="cash-safe-monitor glass-panel" id="safe-monitor-card">
+                    <div class="safe-info">
+                        <span class="safe-label">الخزنة نقداً</span>
+                        <span class="safe-value" id="header-cash-safe">0 <span class="currency">ل.س</span></span>
+                    </div>
+                    <div class="safe-icon-box">
+                        <i class="fa-solid fa-vault safe-vault-icon"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Scrollable View Panes -->
+            <div class="view-panes">
+                
+                <!-- 1. Unified Mobile Checkout Pane (Default) -->
+                <section id="pane-sales" class="tab-pane active">
+                    <div class="mobile-unified-checkout-view">
+                        <div class="mobile-section-header">
+                            <h3>تعبئة عناصر الفاتورة</h3>
+                        </div>
+                        
+                        <div class="glass-panel mobile-card">
+                            <!-- 1. Snacks Trigger -->
+                            <div class="mobile-snacks-action">
+                                <button type="button" class="btn btn-primary btn-block btn-lg" id="mobile-add-snacks-btn">
+                                    <i class="fa-solid fa-utensils"></i>
+                                    <span id="mobile-snacks-btn-text">إضافة مأكولات ومشروبات من الكتالوج</span>
+                                </button>
+                            </div>
+                            
+                            <hr class="mobile-divider">
+                            
+                            <!-- 2. Telecom Transfer Segment -->
+                            <div class="mobile-checkbox-section">
+                                <label class="mobile-checkbox-label">
+                                    <input type="checkbox" id="mobile-enable-telecom">
+                                    <span>تحويل رصيد (شحن)</span>
+                                </label>
+                            </div>
+                            
+                            <div class="mobile-expanded-section hidden" id="mobile-telecom-expanded">
+                                <div class="form-group hidden">
+                                    <label for="mobile-tel-company">شركة الاتصالات *</label>
+                                    <select id="mobile-tel-company">
+                                        <!-- Dynamic options populated by JS -->
+                                    </select>
+                                </div>
+                                
+                                <div class="split-inputs-row hidden">
+                                    <div class="form-group">
+                                        <label for="mobile-tel-phone">رقم الهاتف *</label>
+                                        <input type="text" id="mobile-tel-phone" class="number-font" placeholder="09xxxxxxxx">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="mobile-tel-amount">الرصيد المحول *</label>
+                                        <input type="number" id="mobile-tel-amount" class="number-font" placeholder="فئة الشحن">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>سعر تحويل الرصيد (ل.س):</label>
+                                    <div class="price-stepper">
+                                        <button type="button" class="stepper-btn mobile-stepper-btn" data-input="mobile-tel-price" data-step="-1000">-1000</button>
+                                        <input type="number" id="mobile-tel-price" class="number-font stepper-input" value="0" min="0">
+                                        <button type="button" class="stepper-btn mobile-stepper-btn" data-input="mobile-tel-price" data-step="1000">+1000</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="mobile-divider">
+                            
+                            <!-- 3. PlayStation Session Segment -->
+                            <div class="mobile-checkbox-section">
+                                <label class="mobile-checkbox-label">
+                                    <input type="checkbox" id="mobile-enable-playstation">
+                                    <span>لعب بلايستيشن (PlayStation)</span>
+                                </label>
+                            </div>
+                            
+                            <div class="mobile-expanded-section hidden" id="mobile-playstation-expanded">
+                                <div class="form-group">
+                                    <label for="mobile-ps-label">مسمى الجلسة/الجهاز (اختياري)</label>
+                                    <input type="text" id="mobile-ps-label" placeholder="مثال: لعب بلايستيشن">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>سعر اللعب الإجمالي (ل.س):</label>
+                                    <div class="price-stepper">
+                                        <button type="button" class="stepper-btn mobile-stepper-btn" data-input="mobile-ps-price" data-step="-1000">-1000</button>
+                                        <input type="number" id="mobile-ps-price" class="number-font stepper-input" value="0" min="0">
+                                        <button type="button" class="stepper-btn mobile-stepper-btn" data-input="mobile-ps-price" data-step="1000">+1000</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 4. Dynamic Cart Summary -->
+                        <div class="mobile-section-header hidden" id="mobile-cart-summary-header">
+                            <h3>ملخص سلة الشراء الموحدة</h3>
+                        </div>
+                        
+                        <div class="glass-panel mobile-card hidden" id="mobile-cart-summary-card">
+                            <div class="mobile-cart-items-list" id="mobile-cart-items">
+                                <!-- Dynamic rows inserted by mobile.js -->
+                            </div>
+                            <div class="mobile-cart-total-row">
+                                <span>المجموع الكلي:</span>
+                                <span class="number-font" id="mobile-cart-total">0 ل.س</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 5. Unified Split Payment Form -->
+                        <div class="mobile-section-header">
+                            <h3>تفاصيل الدفع والتسجيل</h3>
+                        </div>
+                        
+                        <div class="glass-panel mobile-card">
+                            <form id="mobile-checkout-form">
+                                <div class="payment-method-selectors">
+                                    <div class="method-option">
+                                        <input type="radio" name="mobile-payment-method" id="mobile-pay-cash" value="cash" checked>
+                                        <label for="mobile-pay-cash">
+                                            <i class="fa-solid fa-money-bill-wave"></i>
+                                            <span>كاش نقداً</span>
+                                        </label>
+                                    </div>
+                                    <div class="method-option">
+                                        <input type="radio" name="mobile-payment-method" id="mobile-pay-debt" value="debt">
+                                        <label for="mobile-pay-debt">
+                                            <i class="fa-solid fa-user-clock"></i>
+                                            <span>دين مؤجل</span>
+                                        </label>
+                                    </div>
+                                    <div class="method-option">
+                                        <input type="radio" name="mobile-payment-method" id="mobile-pay-split" value="split">
+                                        <label for="mobile-pay-split">
+                                            <i class="fa-solid fa-layer-group"></i>
+                                            <span>دفع موزع</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group hidden" id="mobile-cash-input-group">
+                                    <label>المبلغ المدفوع كاش نقداً (ل.س):</label>
+                                    <div class="price-stepper">
+                                        <button type="button" class="stepper-btn mobile-stepper-btn" data-input="mobile-cash-paid" data-step="-1000">-1000</button>
+                                        <input type="number" id="mobile-cash-paid" class="number-font stepper-input" value="0" min="0">
+                                        <button type="button" class="stepper-btn mobile-stepper-btn" data-input="mobile-cash-paid" data-step="1000">+1000</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group hidden" id="mobile-customer-select-group">
+                                    <label for="mobile-customer-select">اختر العميل المدين *</label>
+                                    <select id="mobile-customer-select">
+                                        <!-- Dynamic options -->
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group hidden" id="mobile-debt-display-group">
+                                    <label>قيمة الدين المتبقية والمسجلة (ل.س):</label>
+                                    <input type="text" id="mobile-debt-amount" class="number-font" readonly value="0 ل.س" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.25); color: #ef4444; font-weight: bold;">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="mobile-checkout-notes">ملاحظات الفاتورة</label>
+                                    <textarea id="mobile-checkout-notes" rows="2" placeholder="ملاحظات توضيحية إضافية للفاتورة..."></textarea>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary btn-block btn-lg" id="mobile-checkout-btn" style="margin-top: 10px; background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-glow-secondary) 100%);">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                                    <span>حفظ وإرسال الفاتورة</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 2. Mobile Dashboard Tab View -->
+                <section id="pane-dashboard" class="tab-pane">
+                    <div class="mobile-section-header">
+                        <h3>أداء النظام اليوم</h3>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stats-card card-safe glass-panel">
+                            <div class="card-icon"><i class="fa-solid fa-vault"></i></div>
+                            <h3>الصندوق نقداً</h3>
+                            <div class="value number-font" id="mobile-dash-safe">0</div>
+                            <span class="currency">ليرة سورية</span>
+                        </div>
+                        <div class="stats-card card-sales glass-panel">
+                            <div class="card-icon"><i class="fa-solid fa-cash-register"></i></div>
+                            <h3>مبيعات اليوم</h3>
+                            <div class="value number-font" id="mobile-dash-sales">0</div>
+                            <span class="currency">ليرة سورية</span>
+                        </div>
+                        <div class="stats-card card-debt glass-panel">
+                            <div class="card-icon"><i class="fa-solid fa-user-clock"></i></div>
+                            <h3>إجمالي الديون</h3>
+                            <div class="value number-font" id="mobile-dash-debts">0</div>
+                            <span class="currency">ليرة سورية</span>
+                        </div>
+                        <div class="stats-card card-expenses glass-panel">
+                            <div class="card-icon"><i class="fa-solid fa-wallet"></i></div>
+                            <h3>مصاريف اليوم</h3>
+                            <div class="value number-font" id="mobile-dash-expenses">0</div>
+                            <span class="currency">ليرة سورية</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mobile-section-header" style="margin-top: 20px;">
+                        <h3>المبيعات والفواتير الأخيرة</h3>
+                    </div>
+                    
+                    <div class="glass-panel mobile-card">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>العميل</th>
+                                        <th>الإجمالي</th>
+                                        <th>المدفوع</th>
+                                        <th>الدين</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mobile-recent-sales-list">
+                                    <!-- Dynamic rows loaded by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 3. Mobile Customers/Debts Tab View -->
+                <section id="pane-customers" class="tab-pane">
+                    <div class="mobile-section-header">
+                        <h3>إضافة عميل جديد</h3>
+                    </div>
+                    <div class="glass-panel mobile-card">
+                        <form id="mobile-customer-form">
+                            <div class="form-group">
+                                <label for="mobile-cust-name">اسم العميل *</label>
+                                <input type="text" id="mobile-cust-name" required placeholder="أدخل اسم العميل بالكامل">
+                            </div>
+                            <div class="form-group">
+                                <label for="mobile-cust-phone">رقم الهاتف (اختياري)</label>
+                                <input type="text" id="mobile-cust-phone" class="number-font" placeholder="09xxxxxxxx">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fa-solid fa-user-plus"></i>
+                                <span>إضافة العميل للمنظومة</span>
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <div class="mobile-section-header" style="margin-top: 20px;">
+                        <h3>قائمة حسابات الديون والعملاء</h3>
+                    </div>
+                    <div class="glass-panel mobile-card">
+                        <div class="form-group">
+                            <div class="mobile-sheet-search" style="padding: 0; border: none;">
+                                <input type="text" id="mobile-cust-search" placeholder="🔍 ابحث عن اسم العميل...">
+                            </div>
+                        </div>
+                        <div class="table-responsive" style="margin-top: 10px;">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>العميل</th>
+                                        <th>الديون الحالية</th>
+                                        <th>الإجراء</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mobile-customers-table-body">
+                                    <!-- Dynamic rows loaded by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 4. Mobile Expenses Tab View -->
+                <section id="pane-expenses" class="tab-pane">
+                    <div class="mobile-section-header">
+                        <h3>تسجيل مصروف يومي جديد</h3>
+                    </div>
+                    <div class="glass-panel mobile-card">
+                        <form id="mobile-expense-form">
+                            <div class="form-group">
+                                <label for="mobile-exp-category">تصنيف وفئة المصروف *</label>
+                                <select id="mobile-exp-category" required>
+                                    <option value="صيانة">أجهزة وصيانة</option>
+                                    <option value="بوفيه">بوفيه ومشتريات صالة</option>
+                                    <option value="كهرباء">كهرباء ومولدات وتدفئة</option>
+                                    <option value="إنترنت">اشتراكات وشحن إنترنت</option>
+                                    <option value="نظافة">نظافة ومستلزمات عامة</option>
+                                    <option value="أخرى">نفقات ومصاريف أخرى</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>قيمة المصروف الكلي (ل.س) *</label>
+                                <div class="price-stepper">
+                                    <button type="button" class="stepper-btn mobile-stepper-btn" data-input="mobile-exp-amount" data-step="-1000">-1000</button>
+                                    <input type="number" id="mobile-exp-amount" class="number-font stepper-input" required value="0" min="0">
+                                    <button type="button" class="stepper-btn mobile-stepper-btn" data-input="mobile-exp-amount" data-step="1000">+1000</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="mobile-exp-notes">شرح وتوضيح المصروف *</label>
+                                <textarea id="mobile-exp-notes" required placeholder="أدخل تفاصيل المصروف بدقة..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fa-solid fa-wallet"></i>
+                                <span>حفظ وتوثيق المصروف</span>
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <div class="mobile-section-header" style="margin-top: 20px;">
+                        <h3>سجل النفقات المصروفة مؤخراً</h3>
+                    </div>
+                    <div class="glass-panel mobile-card">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>الفئة</th>
+                                        <th>القيمة</th>
+                                        <th>الملاحظات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mobile-expenses-table-body">
+                                    <!-- Dynamic rows loaded by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+                
+            </div>
+        </main>
+        
+        <!-- Premium Mobile Bottom Nav Bar (Matches flutter bottom navigation) -->
+        <nav class="mobile-bottom-nav">
+            <button class="bottom-nav-item active" data-tab="sales">
+                <i class="fa-solid fa-cash-register"></i>
+                <span>بيع سريع</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="dashboard">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>الرئيسية</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="customers">
+                <i class="fa-solid fa-users"></i>
+                <span>الديون</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="expenses">
+                <i class="fa-solid fa-wallet"></i>
+                <span>المصاريف</span>
+            </button>
+            <button class="bottom-nav-item" id="mobile-more-trigger">
+                <i class="fa-solid fa-ellipsis"></i>
+                <span>المزيد</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Native Bottom Sheet Snack Catalog Overlay -->
+    <div class="mobile-sheet-overlay hidden" id="mobile-snacks-sheet">
+        <div class="mobile-sheet-content">
+            <div class="mobile-sheet-header">
+                <h3>إضافة مأكولات ومشروبات للعميل</h3>
+                <button class="mobile-sheet-close" id="mobile-close-sheet-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="mobile-sheet-search">
+                <input type="text" id="mobile-snack-search-input" placeholder="🔍 ابحث عن بيبسي، ماء، شيبس...">
+            </div>
+            
+            <div class="mobile-sheet-body">
+                <div class="mobile-snacks-list" id="mobile-snacks-container">
+                    <!-- Dynamic snack items populated by JS -->
+                </div>
+            </div>
+            
+            <div class="mobile-sheet-footer">
+                <button type="button" class="btn btn-primary btn-block btn-lg" id="mobile-confirm-snacks-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>تحديث وتأكيد الأكلات المختارة</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Javascript Entry Points for Mobile View -->
+    <script src="js/api.js"></script>
+    <script src="js/mobile.js"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('Mobile Service Worker Registered Successfully', reg.scope))
+                    .catch(err => console.error('Mobile Service Worker Registration Failed', err));
+            });
+        }
+    </script>
+</body>
+</html>

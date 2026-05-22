@@ -631,29 +631,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // B. ADD TELECOM BALANCE TO CART
     dom.telCartForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const companyId = parseInt(dom.telCompanySelect.value);
-        const companyName = dom.telCompanySelect.options[dom.telCompanySelect.selectedIndex].text;
-        const phone = document.getElementById('tel-phone').value.trim();
-        const transferAmount = parseFloat(document.getElementById('tel-amount').value);
         const customerPrice = parseFloat(document.getElementById('tel-price').value);
 
-        if (!companyId || isNaN(transferAmount) || isNaN(customerPrice)) {
+        if (isNaN(customerPrice) || customerPrice <= 0) {
+            showToastError("يرجى إدخال سعر صحيح.");
             return;
         }
 
         const telecomItem = {
             type: 'telecom',
-            company_id: companyId,
-            company_name: companyName,
-            phone: phone,
-            amount: transferAmount,
+            company_id: null,
+            company_name: 'شحن رصيد',
+            phone: null,
+            amount: null,
             price: customerPrice
         };
 
         addToCart('telecom', telecomItem);
 
-        // Reset inputs but preserve phone logic
-        document.getElementById('tel-amount').value = '';
+        // Reset inputs
         document.getElementById('tel-price').value = '';
         
         // Notify
@@ -727,7 +723,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 telecom_company_id: tel.company_id,
                 telecom_phone: tel.phone,
                 telecom_amount: tel.amount,
-                name: `رصيد ${tel.company_name} لـ ${tel.phone}`,
+                name: `تحويل رصيد (شحن)`,
                 quantity: 1,
                 price_per_unit: tel.price,
                 total_price: tel.price
@@ -817,7 +813,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (item.type === 'product') {
                 metaText = '<i class="fa-solid fa-tag"></i> مأكولات ومشروبات';
             } else if (item.type === 'telecom') {
-                metaText = `<i class="fa-solid fa-mobile"></i> شحن رصيد بقيمة ${formatNumber(item.telecom_amount)} وحدات`;
+                if (item.telecom_amount) {
+                    metaText = `<i class="fa-solid fa-mobile"></i> شحن رصيد بقيمة ${formatNumber(item.telecom_amount)} وحدات`;
+                } else {
+                    metaText = `<i class="fa-solid fa-mobile"></i> تحويل رصيد (شحن)`;
+                }
             } else {
                 metaText = '<i class="fa-solid fa-circle-play"></i> خدمة/لعب مخصص يدوياً';
             }
@@ -1514,9 +1514,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     sale.items.forEach(item => {
                         if (item.item_type === 'telecom') {
                             telecomLogs.push({
-                                company_name: item.telecom_name || 'شبكة عامة',
+                                company_name: item.telecom_name || 'تحويل رصيد عام',
                                 phone: item.telecom_phone,
-                                amount: parseFloat(item.telecom_amount),
+                                amount: item.telecom_amount ? parseFloat(item.telecom_amount) : null,
                                 price: parseFloat(item.price_per_unit),
                                 date: sale.created_at,
                                 sale_id: sale.id
@@ -1532,14 +1532,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         // In reality, operator units purchase price is different, but dynamically
                         // we show client revenue vs transfer amount.
                         const revenue = log.price;
-                        const netCost = log.amount;
+                        const netCost = log.amount !== null ? log.amount : 0;
                         const simpleProfit = revenue - netCost;
+
+                        const phoneDisplay = log.phone ? log.phone : '<span class="text-muted">-</span>';
+                        const amountDisplay = log.amount !== null && log.amount > 0 
+                            ? `${formatNumber(log.amount)} وحدات` 
+                            : '<span class="text-muted">-</span>';
 
                         dom.telecomLogsTableBody.innerHTML += `
                             <tr>
                                 <td><b>${log.company_name}</b></td>
-                                <td class="number-font">${log.phone}</td>
-                                <td class="number-font text-info">${formatNumber(log.amount)} وحدات</td>
+                                <td class="number-font">${phoneDisplay}</td>
+                                <td class="number-font text-info">${amountDisplay}</td>
                                 <td class="number-font">${formatNumber(log.price)} ل.س</td>
                                 <td class="profit-plus number-font">${simpleProfit > 0 ? '+' : ''}${formatNumber(simpleProfit)} ل.س</td>
                                 <td class="number-font">${formattedDate}</td>

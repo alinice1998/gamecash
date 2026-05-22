@@ -69,6 +69,9 @@ class SalesAPI {
 
             foreach ($items as $index => $item) {
                 $type = isset($item['type']) ? trim($item['type']) : '';
+                if ($type === 'playstation') {
+                    $type = 'custom';
+                }
                 $qty = isset($item['quantity']) ? intval($item['quantity']) : 1;
                 $price = isset($item['price_per_unit']) ? floatval($item['price_per_unit']) : 0.00;
 
@@ -122,21 +125,19 @@ class SalesAPI {
                     $processed_item['product_id'] = $product_id;
 
                 } elseif ($type === 'telecom') {
-                    $company_id = isset($item['telecom_company_id']) ? intval($item['telecom_company_id']) : 0;
-                    $phone = isset($item['telecom_phone']) ? trim($item['telecom_phone']) : '';
-                    $amount = isset($item['telecom_amount']) ? floatval($item['telecom_amount']) : 0.00;
+                    $company_id = isset($item['telecom_company_id']) && intval($item['telecom_company_id']) > 0 ? intval($item['telecom_company_id']) : null;
+                    $phone = isset($item['telecom_phone']) && trim($item['telecom_phone']) !== '' ? trim($item['telecom_phone']) : null;
+                    $amount = isset($item['telecom_amount']) && floatval($item['telecom_amount']) > 0 ? floatval($item['telecom_amount']) : null;
 
-                    if ($company_id <= 0 || empty($phone) || $amount <= 0) {
-                        throw new Exception("بيانات تحويل الرصيد غير مكتملة.");
-                    }
-
-                    // Check company exists
-                    $comp_query = "SELECT name FROM telecom_companies WHERE id = :id";
-                    $comp_stmt = $db->prepare($comp_query);
-                    $comp_stmt->bindParam(":id", $company_id);
-                    $comp_stmt->execute();
-                    if (!$comp_stmt->fetch()) {
-                        throw new Exception("شركة الاتصالات المحددة غير موجودة.");
+                    // Check company exists only if company_id is provided
+                    if ($company_id !== null) {
+                        $comp_query = "SELECT name FROM telecom_companies WHERE id = :id";
+                        $comp_stmt = $db->prepare($comp_query);
+                        $comp_stmt->bindParam(":id", $company_id);
+                        $comp_stmt->execute();
+                        if (!$comp_stmt->fetch()) {
+                            throw new Exception("شركة الاتصالات المحددة غير موجودة.");
+                        }
                     }
 
                     $processed_item['telecom_company_id'] = $company_id;
@@ -144,7 +145,13 @@ class SalesAPI {
                     $processed_item['telecom_amount'] = $amount;
 
                 } elseif ($type === 'custom') {
-                    $custom_name = isset($item['custom_name']) ? trim($item['custom_name']) : '';
+                    $custom_name = '';
+                    if (isset($item['custom_name']) && trim($item['custom_name']) !== '') {
+                        $custom_name = trim($item['custom_name']);
+                    } elseif (isset($item['ps_label']) && trim($item['ps_label']) !== '') {
+                        $custom_name = trim($item['ps_label']);
+                    }
+
                     if (empty($custom_name)) {
                         throw new Exception("يرجى إدخال اسم الخدمة/اللعب المخصص.");
                     }
