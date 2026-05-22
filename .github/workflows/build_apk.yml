@@ -1,0 +1,53 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # يسمح بتشغيل البناء يدوياً من موقع GitHub
+
+jobs:
+  build:
+    name: Build Flutter APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. سحب كود المشروع من GitHub
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. إعداد بيئة عمل Java المطلوبة لبناء الأندرويد
+      - name: Set up Java JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. إعداد بيئة عمل Flutter مع تفعيل الكاش لتسريع البناء مستقبلاً
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # 4. تحميل الاعتمادات الخاصة بتطبيق الجوال
+      - name: Install dependencies
+        run: |
+          cd gamecash-mobile
+          flutter pub get
+
+      # 5. بناء نسخة الـ APK النهائية
+      - name: Build Release APK
+        run: |
+          cd gamecash-mobile
+          flutter build apk --release
+
+      # 6. رفع ملف الـ APK الناتج كأصل (Artifact) ليكون جاهزاً للتحميل
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamecash-release-apk
+          path: gamecash-mobile/build/app/outputs/flutter-apk/app-release.apk
