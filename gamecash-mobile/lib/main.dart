@@ -83,11 +83,11 @@ class MyApp extends StatelessWidget {
           ),
         ),
         
-        dialogTheme: DialogTheme(
+        dialogTheme: DialogThemeData(
           backgroundColor: const Color(0xFF161824),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0x33FFFFFF), width: 1),
+            side: const BorderSide(color: Color(0x33FFFFFF), width: 1),
           ),
         ),
       ),
