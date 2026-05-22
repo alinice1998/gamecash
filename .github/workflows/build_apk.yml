@@ -33,19 +33,25 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. تحميل الاعتمادات الخاصة بتطبيق الجوال
+      # 4. تهيئة منصة الأندرويد تلقائياً (بسبب عدم وجود مجلد android في المستودع)
+      - name: Create Android platform if missing
+        run: |
+          cd gamecash-mobile
+          flutter create --platforms=android .
+
+      # 5. تحميل الاعتمادات الخاصة بتطبيق الجوال
       - name: Install dependencies
         run: |
           cd gamecash-mobile
           flutter pub get
 
-      # 5. بناء نسخة الـ APK النهائية
+      # 6. بناء نسخة الـ APK النهائية
       - name: Build Release APK
         run: |
           cd gamecash-mobile
           flutter build apk --release
 
-      # 6. رفع ملف الـ APK الناتج كأصل (Artifact) ليكون جاهزاً للتحميل
+      # 7. رفع ملف الـ APK الناتج كأصل (Artifact) ليكون جاهزاً للتحميل
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
