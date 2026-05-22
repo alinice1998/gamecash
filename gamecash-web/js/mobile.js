@@ -2,6 +2,34 @@
    GAME CASH MOBILE CONTROLLER (STANDALONE PWA LOGIC)
    ========================================================================== */
 
+// Arabic/Persian digit normalization helper
+function cleanNumber(val) {
+    if (val === null || val === undefined) return '';
+    const str = String(val);
+    const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    let normalized = '';
+    for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+        const arabicIdx = arabicDigits.indexOf(char);
+        const persianIdx = persianDigits.indexOf(char);
+        if (arabicIdx !== -1) {
+            normalized += arabicIdx;
+        } else if (persianIdx !== -1) {
+            normalized += persianIdx;
+        } else {
+            normalized += char;
+        }
+    }
+    return normalized;
+}
+
+function parseCleanInt(val) {
+    const cleaned = cleanNumber(val).replace(/[^\d-]/g, '');
+    const parsed = parseInt(cleaned, 10);
+    return isNaN(parsed) ? 0 : parsed;
+}
+
 // 1. App State Registry
 const state = {
     user: null,
@@ -263,7 +291,7 @@ async function loadRecentSales() {
                 tr.innerHTML = `
                     <td style="font-weight: 700; color: #ffffff;">${sale.customer_name || 'زبون نقدي'}</td>
                     <td class="number-font" style="color: var(--accent-color); font-weight: 700;">${Number(sale.total_amount).toLocaleString()}</td>
-                    <td class="number-font" style="color: var(--success-color);">${Number(sale.cash_paid).toLocaleString()}</td>
+                    <td class="number-font" style="color: var(--success-color);">${Number(sale.paid_amount).toLocaleString()}</td>
                     <td class="number-font" style="color: #ef4444;">${Number(sale.debt_amount).toLocaleString()}</td>
                 `;
                 dom.recentSalesList.appendChild(tr);
@@ -388,7 +416,7 @@ function setupAppListeners() {
             const input = document.getElementById(inputId);
             
             if (input) {
-                let currentVal = parseInt(input.value) || 0;
+                let currentVal = parseCleanInt(input.value);
                 let newVal = currentVal + step;
                 if (newVal < 0) newVal = 0;
                 input.value = newVal;
@@ -472,7 +500,7 @@ function setupAppListeners() {
     dom.customerForm.onsubmit = async (e) => {
         e.preventDefault();
         const name = dom.custNameInput.value.trim();
-        const phone = dom.custPhoneInput.value.trim();
+        const phone = cleanNumber(dom.custPhoneInput.value).trim();
         
         try {
             await api.post('api/customers', { name, phone });
@@ -508,7 +536,7 @@ function setupAppListeners() {
     dom.expenseForm.onsubmit = async (e) => {
         e.preventDefault();
         const category = dom.expCategorySelect.value;
-        const amount = parseInt(dom.expAmountInput.value) || 0;
+        const amount = parseCleanInt(dom.expAmountInput.value);
         const notes = dom.expNotesTextarea.value.trim();
         
         if (amount <= 0) {
@@ -593,7 +621,7 @@ function setupAppListeners() {
                 return;
             }
         } else if (paymentMethod === 'split') {
-            cashPaid = parseInt(dom.cashPaidInput.value) || 0;
+            cashPaid = parseCleanInt(dom.cashPaidInput.value);
             debtAmount = totalAmount - cashPaid;
             
             if (cashPaid < 0 || cashPaid > totalAmount) {
@@ -649,6 +677,7 @@ function setupAppListeners() {
         const payload = {
             customer_id: customerId || null,
             total_amount: totalAmount,
+            paid_amount: cashPaid,
             cash_paid: cashPaid,
             debt_amount: debtAmount,
             notes: dom.checkoutNotes.value.trim(),
@@ -656,6 +685,7 @@ function setupAppListeners() {
                 product_id: item.product_id || null,
                 quantity: item.qty || 1,
                 unit_price: item.unit_price || item.price,
+                price_per_unit: item.unit_price || item.price,
                 total_price: item.price,
                 type: item.type, // 'product', 'telecom', 'playstation'
                 // details for telecom
@@ -764,7 +794,10 @@ function syncMobileToCart() {
     
     // 2. Add Telecom details if checked
     if (dom.enableTelecom.checked) {
-        const price = parseInt(dom.telPrice.value) || 0;
+        const price = parseCleanInt(dom.telPrice.value);
+        const companyId = dom.telCompany.value ? parseCleanInt(dom.telCompany.value) : null;
+        const phone = dom.telPhone.value ? cleanNumber(dom.telPhone.value).trim() : null;
+        const amount = dom.telAmount.value ? parseCleanInt(dom.telAmount.value) : null;
         
         state.cart.push({
             type: 'telecom',
@@ -772,16 +805,16 @@ function syncMobileToCart() {
             qty: 1,
             unit_price: price,
             price: price,
-            telecom_company_id: null,
-            telecom_phone: null,
-            telecom_amount: null
+            telecom_company_id: companyId,
+            telecom_phone: phone,
+            telecom_amount: amount
         });
     }
     
     // 3. Add PlayStation details if checked
     if (dom.enablePlaystation.checked) {
         const label = dom.psLabel.value.trim() || 'لعب بلايستيشن';
-        const price = parseInt(dom.psPrice.value) || 0;
+        const price = parseCleanInt(dom.psPrice.value);
         
         state.cart.push({
             type: 'playstation',
@@ -863,7 +896,7 @@ function updateDebtBalance() {
         debtAmount = totalAmount;
         dom.cashPaidInput.value = 0;
     } else if (payMethod === 'split') {
-        cashPaid = parseInt(dom.cashPaidInput.value) || 0;
+        cashPaid = parseCleanInt(dom.cashPaidInput.value);
         if (cashPaid > totalAmount) {
             cashPaid = totalAmount;
             dom.cashPaidInput.value = totalAmount;
@@ -1051,10 +1084,11 @@ window.promptPayoffMobile = async function(customerId, customerName, currentDebt
         background: '#161824',
         color: '#ffffff',
         inputValidator: (value) => {
-            if (!value || isNaN(value) || parseInt(value) <= 0) {
+            const cleanedVal = parseCleanInt(value);
+            if (!value || isNaN(cleanedVal) || cleanedVal <= 0) {
                 return 'يرجى إدخال مبلغ سداد صحيح أكبر من الصفر!';
             }
-            if (parseInt(value) > currentDebt) {
+            if (cleanedVal > currentDebt) {
                 return `مبلغ السداد لا يمكن أن يتجاوز الدين الكلي (${currentDebt.toLocaleString()} ل.س)!`;
             }
         }
@@ -1062,7 +1096,7 @@ window.promptPayoffMobile = async function(customerId, customerName, currentDebt
     
     if (!amount) return;
     
-    const payoffVal = parseInt(amount);
+    const payoffVal = parseCleanInt(amount);
     
     try {
         await api.post('api/customers/payments', {
