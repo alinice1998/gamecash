@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
         telCompanySelect: document.getElementById('tel-company'),
         telCartForm: document.getElementById('telecom-cart-form'),
         customCartForm: document.getElementById('custom-cart-form'),
+        chamcashCartForm: document.getElementById('chamcash-cart-form'),
         
         // Customers Tab
         customersTableBody: document.getElementById('customers-table-body'),
@@ -98,7 +99,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Expenses Tab
         expenseForm: document.getElementById('expense-form'),
-        expensesTableBody: document.getElementById('expenses-table-body')
+        expensesTableBody: document.getElementById('expenses-table-body'),
+        
+        // Records Tab
+        recordsTableBody: document.getElementById('records-table-body'),
+        recordsSearch: document.getElementById('records-search'),
+        btnRefreshRecords: document.getElementById('btn-refresh-records')
     };
 
     // ==========================================================================
@@ -280,6 +286,9 @@ document.addEventListener('DOMContentLoaded', () => {
         switch(tabName) {
             case 'dashboard':
                 loadDashboardData();
+                break;
+            case 'records':
+                loadRecords();
                 break;
             case 'sales':
                 renderCart();
@@ -548,7 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.add('active');
 
             const targetCatalog = btn.getAttribute('data-catalog');
-            const catalogPanes = ['snacks', 'telecom', 'custom'];
+            const catalogPanes = ['snacks', 'telecom', 'custom', 'chamcash'];
             catalogPanes.forEach(paneName => {
                 const paneEl = document.getElementById(`catalog-${paneName}`);
                 if (paneName === targetCatalog) {
@@ -681,6 +690,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showToastSuccess("تم إضافة البند المخصص للسلة.");
     });
+
+    // C-2. ADD CHAM CASH ITEM TO CART
+    if (dom.chamcashCartForm) {
+        dom.chamcashCartForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const price = parseFloat(document.getElementById('chamcash-price').value);
+
+            if (isNaN(price) || price <= 0) return;
+
+            const chamcashItem = {
+                type: 'custom',
+                name: `تحويل شام كاش`,
+                price: price,
+                qty: 1
+            };
+
+            addToCart('custom', chamcashItem);
+
+            // Reset
+            document.getElementById('chamcash-price').value = '';
+
+            showToastSuccess("تم إضافة تحويل شام كاش للسلة.");
+        });
+    }
 
     // D. GLOBAL SHOPPING CART ENGINE
     function addToCart(type, payload) {
@@ -1704,6 +1737,92 @@ document.addEventListener('DOMContentLoaded', () => {
             position: 'top-end'
         });
     }
+
+    // ==========================================================================
+    // 13.5 RECORDS & TRANSACTIONS LOGIC
+    // ==========================================================================
+    let allRecords = [];
+
+    async function loadRecords() {
+        dom.recordsTableBody.innerHTML = '<tr><td colspan="7" class="text-center"><i class="fa-solid fa-spinner fa-spin"></i> جاري التحميل...</td></tr>';
+        try {
+            const res = await api.get('api/sales');
+            if (res.success) {
+                allRecords = res.data;
+                renderRecordsList(allRecords);
+            }
+        } catch (err) {
+            dom.recordsTableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">فشل تحميل السجلات.</td></tr>';
+        }
+    }
+
+    function renderRecordsList(records) {
+        dom.recordsTableBody.innerHTML = '';
+        if (records.length === 0) {
+            dom.recordsTableBody.innerHTML = '<tr><td colspan="7" class="text-center">لا توجد عمليات مسجلة.</td></tr>';
+            return;
+        }
+
+        records.forEach(r => {
+            const clientName = r.customer_name || 'زبون نقدي (كاش)';
+            const formattedDate = formatDateString(r.created_at);
+            
+            dom.recordsTableBody.innerHTML += `
+                <tr>
+                    <td class="number-font text-left">#${r.id}</td>
+                    <td><b>${clientName}</b></td>
+                    <td class="number-font text-left">${formatNumber(r.total_amount)}</td>
+                    <td class="number-font text-left text-success">${formatNumber(r.paid_amount)}</td>
+                    <td class="number-font text-left text-danger">${formatNumber(r.debt_amount)}</td>
+                    <td class="number-font text-left">${formattedDate}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="window.deleteRecord(${r.id})">
+                            <i class="fa-solid fa-trash"></i> حذف
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    dom.recordsSearch.addEventListener('input', () => {
+        const query = dom.recordsSearch.value.toLowerCase().trim();
+        const filtered = allRecords.filter(r => {
+            const clientName = (r.customer_name || 'زبون نقدي (كاش)').toLowerCase();
+            return r.id.toString().includes(query) || clientName.includes(query) || r.created_at.includes(query);
+        });
+        renderRecordsList(filtered);
+    });
+
+    dom.btnRefreshRecords.addEventListener('click', () => {
+        loadRecords();
+    });
+
+    window.deleteRecord = async function(id) {
+        const confirm = await Swal.fire({
+            title: 'تأكيد الحذف',
+            text: 'هل أنت متأكد من حذف هذه العملية؟ سيتم استرجاع المخزون والديون المتعلقة.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6366f1',
+            confirmButtonText: 'نعم، احذف',
+            cancelButtonText: 'إلغاء'
+        });
+
+        if (confirm.isConfirmed) {
+            try {
+                const res = await api.delete('api/sales', { sale_id: id });
+                if (res.success) {
+                    showToastSuccess(res.message);
+                    loadRecords();
+                    loadDashboardData();
+                }
+            } catch (err) {
+                Swal.fire('خطأ', err.message, 'error');
+            }
+        }
+    };
 
     // ==========================================================================
     // 14. FIRE ENGINE STARTUP

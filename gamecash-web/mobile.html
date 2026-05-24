@@ -175,24 +175,6 @@
                             </div>
                             
                             <div class="mobile-expanded-section hidden" id="mobile-telecom-expanded">
-                                <div class="form-group hidden">
-                                    <label for="mobile-tel-company">شركة الاتصالات *</label>
-                                    <select id="mobile-tel-company">
-                                        <!-- Dynamic options populated by JS -->
-                                    </select>
-                                </div>
-                                
-                                <div class="split-inputs-row hidden">
-                                    <div class="form-group">
-                                        <label for="mobile-tel-phone">رقم الهاتف *</label>
-                                        <input type="text" id="mobile-tel-phone" class="number-font" placeholder="09xxxxxxxx">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="mobile-tel-amount">الرصيد المحول *</label>
-                                        <input type="number" id="mobile-tel-amount" class="number-font" placeholder="فئة الشحن">
-                                    </div>
-                                </div>
-                                
                                 <div class="form-group">
                                     <label>سعر تحويل الرصيد (ل.س):</label>
                                     <div class="price-stepper">
@@ -205,6 +187,27 @@
                             
                             <hr class="mobile-divider">
                             
+                            <!-- 2-B. Cham Cash Segment -->
+                            <div class="mobile-checkbox-section">
+                                <label class="mobile-checkbox-label">
+                                    <input type="checkbox" id="mobile-enable-chamcash">
+                                    <span>تحويل شام كاش</span>
+                                </label>
+                            </div>
+                            
+                            <div class="mobile-expanded-section hidden" id="mobile-chamcash-expanded">
+                                <div class="form-group">
+                                    <label>سعر تحويل شام كاش (ل.س):</label>
+                                    <div class="price-stepper">
+                                        <button type="button" class="stepper-btn mobile-stepper-btn" data-input="mobile-chamcash-price" data-step="-1000">-1000</button>
+                                        <input type="number" id="mobile-chamcash-price" class="number-font stepper-input" value="0" min="0">
+                                        <button type="button" class="stepper-btn mobile-stepper-btn" data-input="mobile-chamcash-price" data-step="1000">+1000</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="mobile-divider">
+
                             <!-- 3. PlayStation Session Segment -->
                             <div class="mobile-checkbox-section">
                                 <label class="mobile-checkbox-label">

@@ -481,4 +481,70 @@ class SalesAPI {
             Response::error($e->getMessage());
         }
     }
+
+    // DELETE api/sales (Delete existing sale)
+    public static function delete($db, $data) {
+        Auth::authenticate($db);
+
+        $sale_id = isset($data['sale_id']) ? intval($data['sale_id']) : 0;
+        if ($sale_id <= 0) {
+            Response::error("معرف العملية غير صالح.");
+        }
+
+        try {
+            $db->beginTransaction();
+
+            // Fetch old sale
+            $old_sale_stmt = $db->prepare("SELECT * FROM sales WHERE id = :id");
+            $old_sale_stmt->bindParam(":id", $sale_id);
+            $old_sale_stmt->execute();
+            $old_sale = $old_sale_stmt->fetch();
+
+            if (!$old_sale) {
+                throw new Exception("العملية غير موجودة.");
+            }
+
+            // Fetch old items
+            $old_items_stmt = $db->prepare("SELECT * FROM sale_items WHERE sale_id = :id");
+            $old_items_stmt->bindParam(":id", $sale_id);
+            $old_items_stmt->execute();
+            $old_items = $old_items_stmt->fetchAll();
+
+            // Revert old stock
+            $revert_stock_stmt = $db->prepare("UPDATE products SET stock = stock + :qty WHERE id = :id");
+            foreach ($old_items as $old_item) {
+                if ($old_item['item_type'] === 'product' && $old_item['product_id']) {
+                    $revert_stock_stmt->bindParam(":qty", $old_item['quantity']);
+                    $revert_stock_stmt->bindParam(":id", $old_item['product_id']);
+                    $revert_stock_stmt->execute();
+                }
+            }
+
+            // Revert old debt
+            if ($old_sale['debt_amount'] > 0 && $old_sale['customer_id']) {
+                $revert_debt_stmt = $db->prepare("UPDATE customers SET total_debt = total_debt - :debt WHERE id = :cust_id");
+                $revert_debt_stmt->bindParam(":debt", $old_sale['debt_amount']);
+                $revert_debt_stmt->bindParam(":cust_id", $old_sale['customer_id']);
+                $revert_debt_stmt->execute();
+            }
+
+            // Delete items
+            $delete_items_stmt = $db->prepare("DELETE FROM sale_items WHERE sale_id = :id");
+            $delete_items_stmt->bindParam(":id", $sale_id);
+            $delete_items_stmt->execute();
+
+            // Delete sale
+            $delete_sale_stmt = $db->prepare("DELETE FROM sales WHERE id = :id");
+            $delete_sale_stmt->bindParam(":id", $sale_id);
+            $delete_sale_stmt->execute();
+
+            $db->commit();
+
+            Response::success(null, "تم حذف عملية البيع بنجاح واسترجاع المخزون والديون.");
+
+        } catch (Exception $e) {
+            $db->rollBack();
+            Response::error($e->getMessage());
+        }
+    }
 }

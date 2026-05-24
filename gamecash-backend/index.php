@@ -149,6 +149,8 @@ switch ($route) {
             SalesAPI::list($db);
         } elseif ($method === 'POST') {
             SalesAPI::create($db, $input_data);
+        } elseif ($method === 'DELETE') {
+            SalesAPI::delete($db, $input_data);
         } else {
             Response::notFound("طريقة الطلب غير مدعومة.");
         }

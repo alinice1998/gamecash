@@ -67,10 +67,11 @@ function registerDOM() {
         snacksBtnText: document.getElementById('mobile-snacks-btn-text'),
         enableTelecom: document.getElementById('mobile-enable-telecom'),
         telecomExpanded: document.getElementById('mobile-telecom-expanded'),
-        telCompany: document.getElementById('mobile-tel-company'),
-        telPhone: document.getElementById('mobile-tel-phone'),
-        telAmount: document.getElementById('mobile-tel-amount'),
         telPrice: document.getElementById('mobile-tel-price'),
+        
+        enableChamcash: document.getElementById('mobile-enable-chamcash'),
+        chamcashExpanded: document.getElementById('mobile-chamcash-expanded'),
+        chamcashPrice: document.getElementById('mobile-chamcash-price'),
         
         enablePlaystation: document.getElementById('mobile-enable-playstation'),
         playstationExpanded: document.getElementById('mobile-playstation-expanded'),
@@ -389,9 +390,7 @@ function setupAppListeners() {
         } else {
             dom.telecomExpanded.classList.add('hidden');
             // reset telecom inputs
-            dom.telPhone.value = '';
-            dom.telAmount.value = '';
-            dom.telPrice.value = 0;
+            if(dom.telPrice) dom.telPrice.value = 0;
         }
         syncMobileToCart();
     });
@@ -403,6 +402,16 @@ function setupAppListeners() {
             dom.playstationExpanded.classList.add('hidden');
             dom.psLabel.value = '';
             dom.psPrice.value = 0;
+        }
+        syncMobileToCart();
+    });
+    
+    dom.enableChamcash.addEventListener('change', () => {
+        if (dom.enableChamcash.checked) {
+            dom.chamcashExpanded.classList.remove('hidden');
+        } else {
+            dom.chamcashExpanded.classList.add('hidden');
+            if(dom.chamcashPrice) dom.chamcashPrice.value = 0;
         }
         syncMobileToCart();
     });
@@ -429,6 +438,7 @@ function setupAppListeners() {
     
     // Recalculations on custom manual entries
     dom.telPrice.addEventListener('input', () => syncMobileToCart());
+    dom.chamcashPrice.addEventListener('input', () => syncMobileToCart());
     dom.psPrice.addEventListener('input', () => syncMobileToCart());
     dom.cashPaidInput.addEventListener('input', () => updateDebtBalance());
     
@@ -794,20 +804,27 @@ function syncMobileToCart() {
     
     // 2. Add Telecom details if checked
     if (dom.enableTelecom.checked) {
-        const price = parseCleanInt(dom.telPrice.value);
-        const companyId = dom.telCompany.value ? parseCleanInt(dom.telCompany.value) : null;
-        const phone = dom.telPhone.value ? cleanNumber(dom.telPhone.value).trim() : null;
-        const amount = dom.telAmount.value ? parseCleanInt(dom.telAmount.value) : null;
+        const price = parseCleanInt(dom.telPrice?.value || 0);
         
         state.cart.push({
             type: 'telecom',
             name: `تحويل رصيد`,
             qty: 1,
             unit_price: price,
-            price: price,
-            telecom_company_id: companyId,
-            telecom_phone: phone,
-            telecom_amount: amount
+            price: price
+        });
+    }
+
+    // 2-B. Add Cham Cash details if checked
+    if (dom.enableChamcash.checked) {
+        const price = parseCleanInt(dom.chamcashPrice?.value || 0);
+        
+        state.cart.push({
+            type: 'custom',
+            name: 'تحويل شام كاش',
+            qty: 1,
+            unit_price: price,
+            price: price
         });
     }
     
@@ -914,9 +931,11 @@ function resetCheckoutState() {
     
     dom.enableTelecom.checked = false;
     dom.telecomExpanded.classList.add('hidden');
-    dom.telPhone.value = '';
-    dom.telAmount.value = '';
-    dom.telPrice.value = 0;
+    if(dom.telPrice) dom.telPrice.value = 0;
+    
+    dom.enableChamcash.checked = false;
+    dom.chamcashExpanded.classList.add('hidden');
+    if(dom.chamcashPrice) dom.chamcashPrice.value = 0;
     
     dom.enablePlaystation.checked = false;
     dom.playstationExpanded.classList.add('hidden');

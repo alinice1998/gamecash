@@ -122,6 +122,9 @@
                     <li class="nav-item active" data-tab="dashboard">
                         <a href="#"><i class="fa-solid fa-chart-pie"></i> <span>لوحة التحكم</span></a>
                     </li>
+                    <li class="nav-item" data-tab="records">
+                        <a href="#"><i class="fa-solid fa-list-check"></i> <span>السجلات والعمليات</span></a>
+                    </li>
                     <li class="nav-item" data-tab="sales">
                         <a href="#"><i class="fa-solid fa-cart-shopping"></i> <span>عملية بيع جديدة</span></a>
                     </li>
@@ -311,6 +314,43 @@
                     </div>
                 </section>
 
+                <!-- VIEW 1.5: RECORDS & TRANSACTIONS -->
+                <section id="pane-records" class="tab-pane">
+                    <div class="panel-large glass-panel">
+                        <div class="panel-header">
+                            <h2><i class="fa-solid fa-list-check"></i> السجلات وجميع العمليات السابقة</h2>
+                            <button class="btn btn-outline-primary" id="btn-refresh-records"><i class="fa-solid fa-rotate-right"></i> تحديث</button>
+                        </div>
+                        
+                        <div class="search-and-filter">
+                            <div class="search-input-wrapper">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="records-search" placeholder="ابحث برقم العملية، اسم الزبون، أو التاريخ...">
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>رقم العملية</th>
+                                        <th>العميل</th>
+                                        <th>المجموع</th>
+                                        <th>المدفوع كاش</th>
+                                        <th>الدين المسجل</th>
+                                        <th>التاريخ</th>
+                                        <th>خيارات التحكم</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="records-table-body">
+                                    <!-- Loaded dynamically -->
+                                    <tr><td colspan="7" class="text-center">جاري تحميل السجلات...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- VIEW 2: NEW SALE -->
                 <section id="pane-sales" class="tab-pane">
                     <div class="sales-checkout-grid">
@@ -404,6 +444,7 @@
                             <div class="tabs-subnav">
                                 <button class="catalog-tab active" data-catalog="snacks">الأكلات والمشروبات</button>
                                 <button class="catalog-tab" data-catalog="telecom">تحويل رصيد</button>
+                                <button class="catalog-tab" data-catalog="chamcash">شام كاش</button>
                                 <button class="catalog-tab" data-catalog="custom">بند/لعب مخصص</button>
                             </div>
 
@@ -446,6 +487,23 @@
                                         <button type="submit" class="btn btn-primary btn-block">
                                             <i class="fa-solid fa-plus"></i>
                                             <span>أضف تحويل الرصيد للسلة</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Panel B-2: Cham Cash Form -->
+                            <div class="catalog-pane hidden" id="catalog-chamcash">
+                                <div class="telecom-cart-creator">
+                                    <h3><i class="fa-solid fa-money-bill-transfer"></i> إضافة تحويل شام كاش للسلة</h3>
+                                    <form id="chamcash-cart-form">
+                                        <div class="form-group">
+                                            <label for="chamcash-price">سعر التحويل المقطوع للزبون (ل.س)</label>
+                                            <input type="number" id="chamcash-price" class="number-font" placeholder="السعر المحتسب للزبون" required min="1">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-block">
+                                            <i class="fa-solid fa-plus"></i>
+                                            <span>أضف تحويل شام كاش للسلة</span>
                                         </button>
                                     </form>
                                 </div>
