@@ -156,6 +156,15 @@ switch ($route) {
         }
         break;
 
+    case 'api/sales/all':
+        require_once __DIR__ . "/api/sales.php";
+        if ($method === 'DELETE') {
+            SalesAPI::deleteAll($db);
+        } else {
+            Response::notFound("طريقة الطلب غير مدعومة.");
+        }
+        break;
+
     case 'api/sales/update':
         require_once __DIR__ . "/api/sales.php";
         if ($method === 'POST' || $method === 'PUT') {

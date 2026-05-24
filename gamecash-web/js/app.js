@@ -104,7 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Records Tab
         recordsTableBody: document.getElementById('records-table-body'),
         recordsSearch: document.getElementById('records-search'),
-        btnRefreshRecords: document.getElementById('btn-refresh-records')
+        btnRefreshRecords: document.getElementById('btn-refresh-records'),
+        btnDeleteAllRecords: document.getElementById('btn-delete-all-records')
     };
 
     // ==========================================================================
@@ -1797,6 +1798,47 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.btnRefreshRecords.addEventListener('click', () => {
         loadRecords();
     });
+
+    if (dom.btnDeleteAllRecords) {
+        dom.btnDeleteAllRecords.addEventListener('click', async () => {
+            const confirm = await Swal.fire({
+                title: 'تأكيد قوي جدًا!',
+                text: 'سيتم حذف كافة السجلات والعمليات نهائياً، واسترجاع جميع المنتجات للمخزن وخصم ديون هذه العمليات. هذا الإجراء لا يمكن التراجع عنه!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'نعم، احذف كل السجلات',
+                cancelButtonText: 'إلغاء الأمر'
+            });
+
+            if (confirm.isConfirmed) {
+                const doubleConfirm = await Swal.fire({
+                    title: 'هل أنت متأكد 100%؟',
+                    text: 'سيتم تصفير جميع المبيعات السابقة!',
+                    icon: 'error',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'تأكيد نهائي وحذف',
+                    cancelButtonText: 'تراجع'
+                });
+
+                if (doubleConfirm.isConfirmed) {
+                    try {
+                        const res = await api.delete('api/sales/all');
+                        if (res.success) {
+                            showToastSuccess(res.message);
+                            loadRecords();
+                            loadDashboardData();
+                        }
+                    } catch (err) {
+                        Swal.fire('خطأ', err.message, 'error');
+                    }
+                }
+            }
+        });
+    }
 
     window.deleteRecord = async function(id) {
         const confirm = await Swal.fire({

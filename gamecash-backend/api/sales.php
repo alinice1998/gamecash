@@ -547,4 +547,66 @@ class SalesAPI {
             Response::error($e->getMessage());
         }
     }
+
+    // DELETE api/sales/all (Delete all sales)
+    public static function deleteAll($db) {
+        Auth::authenticate($db);
+
+        try {
+            $db->beginTransaction();
+
+            // Fetch all sales
+            $old_sales_stmt = $db->prepare("SELECT * FROM sales");
+            $old_sales_stmt->execute();
+            $old_sales = $old_sales_stmt->fetchAll();
+
+            foreach ($old_sales as $old_sale) {
+                $sale_id = $old_sale['id'];
+                
+                // Fetch items
+                $old_items_stmt = $db->prepare("SELECT * FROM sale_items WHERE sale_id = :id");
+                $old_items_stmt->bindParam(":id", $sale_id);
+                $old_items_stmt->execute();
+                $old_items = $old_items_stmt->fetchAll();
+
+                // Revert stock
+                $revert_stock_stmt = $db->prepare("UPDATE products SET stock = stock + :qty WHERE id = :id");
+                foreach ($old_items as $old_item) {
+                    if ($old_item['item_type'] === 'product' && $old_item['product_id']) {
+                        $revert_stock_stmt->bindParam(":qty", $old_item['quantity']);
+                        $revert_stock_stmt->bindParam(":id", $old_item['product_id']);
+                        $revert_stock_stmt->execute();
+                    }
+                }
+
+                // Revert debt
+                if ($old_sale['debt_amount'] > 0 && $old_sale['customer_id']) {
+                    $revert_debt_stmt = $db->prepare("UPDATE customers SET total_debt = total_debt - :debt WHERE id = :cust_id");
+                    $revert_debt_stmt->bindParam(":debt", $old_sale['debt_amount']);
+                    $revert_debt_stmt->bindParam(":cust_id", $old_sale['customer_id']);
+                    $revert_debt_stmt->execute();
+                }
+            }
+
+            // Delete all items and sales
+            $db->exec("DELETE FROM sale_items");
+            $db->exec("DELETE FROM sales");
+            
+            // Optional: Reset auto-increment
+            try {
+                $db->exec("ALTER TABLE sale_items AUTO_INCREMENT = 1");
+                $db->exec("ALTER TABLE sales AUTO_INCREMENT = 1");
+            } catch (Exception $e) {
+                // Ignore alter table errors
+            }
+
+            $db->commit();
+
+            Response::success(null, "تم حذف جميع العمليات بنجاح واسترجاع المخزون والديون المتعلقة بها.");
+
+        } catch (Exception $e) {
+            $db->rollBack();
+            Response::error("فشل حذف العمليات: " . $e->getMessage());
+        }
+    }
 }
