@@ -591,21 +591,15 @@ class SalesAPI {
             // Delete all items and sales
             $db->exec("DELETE FROM sale_items");
             $db->exec("DELETE FROM sales");
-            
-            // Optional: Reset auto-increment
-            try {
-                $db->exec("ALTER TABLE sale_items AUTO_INCREMENT = 1");
-                $db->exec("ALTER TABLE sales AUTO_INCREMENT = 1");
-            } catch (Exception $e) {
-                // Ignore alter table errors
-            }
 
             $db->commit();
 
             Response::success(null, "تم حذف جميع العمليات بنجاح واسترجاع المخزون والديون المتعلقة بها.");
 
         } catch (Exception $e) {
-            $db->rollBack();
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             Response::error("فشل حذف العمليات: " . $e->getMessage());
         }
     }
