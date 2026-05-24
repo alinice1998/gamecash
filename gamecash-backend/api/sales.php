@@ -237,6 +237,8 @@ class SalesAPI {
             $db->rollBack();
             Response::error($e->getMessage());
         }
+    }
+
     // PUT api/sales/update (Edit existing sale)
     public static function update($db, $data) {
         Auth::authenticate($db);
