@@ -154,6 +154,15 @@ switch ($route) {
         }
         break;
 
+    case 'api/sales/update':
+        require_once __DIR__ . "/api/sales.php";
+        if ($method === 'POST' || $method === 'PUT') {
+            SalesAPI::update($db, $input_data);
+        } else {
+            Response::notFound("طريقة الطلب غير مدعومة.");
+        }
+        break;
+
     // EXPENSES ROUTES
     case 'api/expenses':
         require_once __DIR__ . "/api/expenses.php";
