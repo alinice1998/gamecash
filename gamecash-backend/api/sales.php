@@ -7,15 +7,18 @@ require_once __DIR__ . "/../helpers/response.php";
 class SalesAPI {
     // GET api/sales (Lists past sales with detail items)
     public static function list($db) {
-        Auth::authenticate($db);
+        $user = Auth::authenticate($db);
+        $tenant_id = $user['tenant_id'];
 
         try {
             // Get past 150 sales
             $query = "SELECT s.*, c.name as customer_name 
                       FROM sales s 
                       LEFT JOIN customers c ON s.customer_id = c.id 
+                      WHERE s.tenant_id = :tenant_id
                       ORDER BY s.created_at DESC LIMIT 150";
             $stmt = $db->prepare($query);
+            $stmt->bindParam(":tenant_id", $tenant_id);
             $stmt->execute();
             $sales = $stmt->fetchAll();
 
@@ -26,9 +29,10 @@ class SalesAPI {
                                 FROM sale_items si 
                                 LEFT JOIN products p ON si.product_id = p.id 
                                 LEFT JOIN telecom_companies tc ON si.telecom_company_id = tc.id 
-                                WHERE si.sale_id = :sale_id";
+                                WHERE si.sale_id = :sale_id AND si.tenant_id = :tenant_id";
                 $items_stmt = $db->prepare($items_query);
                 $items_stmt->bindParam(":sale_id", $sale['id']);
+                $items_stmt->bindParam(":tenant_id", $tenant_id);
                 $items_stmt->execute();
                 $items = $items_stmt->fetchAll();
 
@@ -44,7 +48,8 @@ class SalesAPI {
 
     // POST api/sales (Create unified multi-item sale)
     public static function create($db, $data) {
-        Auth::authenticate($db);
+        $user = Auth::authenticate($db);
+        $tenant_id = $user['tenant_id'];
 
         $customer_id = isset($data['customer_id']) && $data['customer_id'] !== '' ? intval($data['customer_id']) : null;
         $paid_amount = isset($data['paid_amount']) ? floatval($data['paid_amount']) : 0.00;
@@ -101,9 +106,10 @@ class SalesAPI {
                     }
 
                     // Get product details and check stock
-                    $prod_query = "SELECT name, stock FROM products WHERE id = :id FOR UPDATE";
+                    $prod_query = "SELECT name, stock FROM products WHERE id = :id AND tenant_id = :tenant_id FOR UPDATE";
                     $prod_stmt = $db->prepare($prod_query);
                     $prod_stmt->bindParam(":id", $product_id);
+                    $prod_stmt->bindParam(":tenant_id", $tenant_id);
                     $prod_stmt->execute();
                     $product = $prod_stmt->fetch();
 
@@ -116,10 +122,11 @@ class SalesAPI {
                     }
 
                     // Deduct stock
-                    $deduct_query = "UPDATE products SET stock = stock - :qty WHERE id = :id";
+                    $deduct_query = "UPDATE products SET stock = stock - :qty WHERE id = :id AND tenant_id = :tenant_id";
                     $deduct_stmt = $db->prepare($deduct_query);
                     $deduct_stmt->bindParam(":qty", $qty);
                     $deduct_stmt->bindParam(":id", $product_id);
+                    $deduct_stmt->bindParam(":tenant_id", $tenant_id);
                     $deduct_stmt->execute();
 
                     $processed_item['product_id'] = $product_id;
@@ -131,9 +138,10 @@ class SalesAPI {
 
                     // Check company exists only if company_id is provided
                     if ($company_id !== null) {
-                        $comp_query = "SELECT name FROM telecom_companies WHERE id = :id";
+                        $comp_query = "SELECT name FROM telecom_companies WHERE id = :id AND tenant_id = :tenant_id";
                         $comp_stmt = $db->prepare($comp_query);
                         $comp_stmt->bindParam(":id", $company_id);
+                        $comp_stmt->bindParam(":tenant_id", $tenant_id);
                         $comp_stmt->execute();
                         if (!$comp_stmt->fetch()) {
                             throw new Exception("شركة الاتصالات المحددة غير موجودة.");
@@ -180,9 +188,10 @@ class SalesAPI {
             }
 
             // 2. Write to Sales table
-            $sale_query = "INSERT INTO sales (customer_id, total_amount, paid_amount, debt_amount, notes) 
-                           VALUES (:customer_id, :total_amount, :paid_amount, :debt_amount, :notes)";
+            $sale_query = "INSERT INTO sales (tenant_id, customer_id, total_amount, paid_amount, debt_amount, notes) 
+                           VALUES (:tenant_id, :customer_id, :total_amount, :paid_amount, :debt_amount, :notes)";
             $sale_stmt = $db->prepare($sale_query);
+            $sale_stmt->bindParam(":tenant_id", $tenant_id);
             $sale_stmt->bindParam(":customer_id", $customer_id);
             $sale_stmt->bindParam(":total_amount", $calculated_total);
             $sale_stmt->bindParam(":paid_amount", $paid_amount);
@@ -193,15 +202,16 @@ class SalesAPI {
             $sale_id = $db->lastInsertId();
 
             // 3. Write items to sale_items table
-            $item_query = "INSERT INTO sale_items (sale_id, item_type, product_id, telecom_company_id, 
+            $item_query = "INSERT INTO sale_items (tenant_id, sale_id, item_type, product_id, telecom_company_id, 
                                                 telecom_phone, telecom_amount, custom_name, quantity, 
                                                 price_per_unit, total_price) 
-                           VALUES (:sale_id, :item_type, :product_id, :telecom_company_id, 
+                           VALUES (:tenant_id, :sale_id, :item_type, :product_id, :telecom_company_id, 
                                    :telecom_phone, :telecom_amount, :custom_name, :quantity, 
                                    :price_per_unit, :total_price)";
             $item_stmt = $db->prepare($item_query);
 
             foreach ($processed_items as $item) {
+                $item_stmt->bindParam(":tenant_id", $tenant_id);
                 $item_stmt->bindParam(":sale_id", $sale_id);
                 $item_stmt->bindParam(":item_type", $item['type']);
                 $item_stmt->bindParam(":product_id", $item['product_id']);
@@ -217,10 +227,11 @@ class SalesAPI {
 
             // 4. Update Customer's total debt balance if applicable
             if ($debt_amount > 0 && $customer_id) {
-                $debt_query = "UPDATE customers SET total_debt = total_debt + :debt_amount WHERE id = :customer_id";
+                $debt_query = "UPDATE customers SET total_debt = total_debt + :debt_amount WHERE id = :customer_id AND tenant_id = :tenant_id";
                 $debt_stmt = $db->prepare($debt_query);
                 $debt_stmt->bindParam(":debt_amount", $debt_amount);
                 $debt_stmt->bindParam(":customer_id", $customer_id);
+                $debt_stmt->bindParam(":tenant_id", $tenant_id);
                 $debt_stmt->execute();
             }
 
@@ -241,7 +252,8 @@ class SalesAPI {
 
     // PUT api/sales/update (Edit existing sale)
     public static function update($db, $data) {
-        Auth::authenticate($db);
+        $user = Auth::authenticate($db);
+        $tenant_id = $user['tenant_id'];
 
         $sale_id = isset($data['sale_id']) ? intval($data['sale_id']) : 0;
         if ($sale_id <= 0) {
@@ -266,7 +278,7 @@ class SalesAPI {
             $db->beginTransaction();
 
             // Fetch old sale
-            $old_sale_stmt = $db->prepare("SELECT * FROM sales WHERE id = :id");
+            $old_sale_stmt = $db->prepare("SELECT * FROM sales WHERE id = :id AND tenant_id = :tenant_id");
             $old_sale_stmt->bindParam(":id", $sale_id);
             $old_sale_stmt->execute();
             $old_sale = $old_sale_stmt->fetch();
@@ -276,13 +288,13 @@ class SalesAPI {
             }
 
             // Fetch old items
-            $old_items_stmt = $db->prepare("SELECT * FROM sale_items WHERE sale_id = :id");
+            $old_items_stmt = $db->prepare("SELECT * FROM sale_items WHERE sale_id = :id AND tenant_id = :tenant_id");
             $old_items_stmt->bindParam(":id", $sale_id);
             $old_items_stmt->execute();
             $old_items = $old_items_stmt->fetchAll();
 
             // Revert old stock
-            $revert_stock_stmt = $db->prepare("UPDATE products SET stock = stock + :qty WHERE id = :id");
+            $revert_stock_stmt = $db->prepare("UPDATE products SET stock = stock + :qty WHERE id = :id AND tenant_id = :tenant_id");
             foreach ($old_items as $old_item) {
                 if ($old_item['item_type'] === 'product' && $old_item['product_id']) {
                     $revert_stock_stmt->bindParam(":qty", $old_item['quantity']);
@@ -293,14 +305,14 @@ class SalesAPI {
 
             // Revert old debt
             if ($old_sale['debt_amount'] > 0 && $old_sale['customer_id']) {
-                $revert_debt_stmt = $db->prepare("UPDATE customers SET total_debt = total_debt - :debt WHERE id = :cust_id");
+                $revert_debt_stmt = $db->prepare("UPDATE customers SET total_debt = total_debt - :debt WHERE id = :cust_id AND tenant_id = :tenant_id");
                 $revert_debt_stmt->bindParam(":debt", $old_sale['debt_amount']);
                 $revert_debt_stmt->bindParam(":cust_id", $old_sale['customer_id']);
                 $revert_debt_stmt->execute();
             }
 
             // Delete old items
-            $delete_items_stmt = $db->prepare("DELETE FROM sale_items WHERE sale_id = :id");
+            $delete_items_stmt = $db->prepare("DELETE FROM sale_items WHERE sale_id = :id AND tenant_id = :tenant_id");
             $delete_items_stmt->bindParam(":id", $sale_id);
             $delete_items_stmt->execute();
 
@@ -342,9 +354,10 @@ class SalesAPI {
                     }
 
                     // Get product details and check stock
-                    $prod_query = "SELECT name, stock FROM products WHERE id = :id FOR UPDATE";
+                    $prod_query = "SELECT name, stock FROM products WHERE id = :id AND tenant_id = :tenant_id FOR UPDATE";
                     $prod_stmt = $db->prepare($prod_query);
                     $prod_stmt->bindParam(":id", $product_id);
+                    $prod_stmt->bindParam(":tenant_id", $tenant_id);
                     $prod_stmt->execute();
                     $product = $prod_stmt->fetch();
 
@@ -357,10 +370,11 @@ class SalesAPI {
                     }
 
                     // Deduct stock
-                    $deduct_query = "UPDATE products SET stock = stock - :qty WHERE id = :id";
+                    $deduct_query = "UPDATE products SET stock = stock - :qty WHERE id = :id AND tenant_id = :tenant_id";
                     $deduct_stmt = $db->prepare($deduct_query);
                     $deduct_stmt->bindParam(":qty", $qty);
                     $deduct_stmt->bindParam(":id", $product_id);
+                    $deduct_stmt->bindParam(":tenant_id", $tenant_id);
                     $deduct_stmt->execute();
 
                     $processed_item['product_id'] = $product_id;
@@ -371,9 +385,10 @@ class SalesAPI {
                     $amount = isset($item['telecom_amount']) && floatval($item['telecom_amount']) > 0 ? floatval($item['telecom_amount']) : null;
 
                     if ($company_id !== null) {
-                        $comp_query = "SELECT name FROM telecom_companies WHERE id = :id";
+                        $comp_query = "SELECT name FROM telecom_companies WHERE id = :id AND tenant_id = :tenant_id";
                         $comp_stmt = $db->prepare($comp_query);
                         $comp_stmt->bindParam(":id", $company_id);
+                        $comp_stmt->bindParam(":tenant_id", $tenant_id);
                         $comp_stmt->execute();
                         if (!$comp_stmt->fetch()) {
                             throw new Exception("شركة الاتصالات المحددة غير موجودة.");
@@ -425,8 +440,9 @@ class SalesAPI {
             }
 
             // Update Sales table
-            $sale_query = "UPDATE sales SET customer_id = :customer_id, total_amount = :total_amount, paid_amount = :paid_amount, debt_amount = :debt_amount, notes = :notes WHERE id = :sale_id";
+            $sale_query = "UPDATE sales SET customer_id = :customer_id, total_amount = :total_amount, paid_amount = :paid_amount, debt_amount = :debt_amount, notes = :notes WHERE id = :sale_id AND tenant_id = :tenant_id";
             $sale_stmt = $db->prepare($sale_query);
+            $sale_stmt->bindParam(":tenant_id", $tenant_id);
             $sale_stmt->bindParam(":customer_id", $customer_id);
             $sale_stmt->bindParam(":total_amount", $calculated_total);
             $sale_stmt->bindParam(":paid_amount", $paid_amount);
@@ -436,15 +452,16 @@ class SalesAPI {
             $sale_stmt->execute();
 
             // Write new items to sale_items table
-            $item_query = "INSERT INTO sale_items (sale_id, item_type, product_id, telecom_company_id, 
+            $item_query = "INSERT INTO sale_items (tenant_id, sale_id, item_type, product_id, telecom_company_id, 
                                                 telecom_phone, telecom_amount, custom_name, quantity, 
                                                 price_per_unit, total_price) 
-                           VALUES (:sale_id, :item_type, :product_id, :telecom_company_id, 
+                           VALUES (:tenant_id, :sale_id, :item_type, :product_id, :telecom_company_id, 
                                    :telecom_phone, :telecom_amount, :custom_name, :quantity, 
                                    :price_per_unit, :total_price)";
             $item_stmt = $db->prepare($item_query);
 
             foreach ($processed_items as $item) {
+                $item_stmt->bindParam(":tenant_id", $tenant_id);
                 $item_stmt->bindParam(":sale_id", $sale_id);
                 $item_stmt->bindParam(":item_type", $item['type']);
                 $item_stmt->bindParam(":product_id", $item['product_id']);
@@ -460,10 +477,11 @@ class SalesAPI {
 
             // Update new Customer's total debt balance if applicable
             if ($debt_amount > 0 && $customer_id) {
-                $debt_query = "UPDATE customers SET total_debt = total_debt + :debt_amount WHERE id = :customer_id";
+                $debt_query = "UPDATE customers SET total_debt = total_debt + :debt_amount WHERE id = :customer_id AND tenant_id = :tenant_id";
                 $debt_stmt = $db->prepare($debt_query);
                 $debt_stmt->bindParam(":debt_amount", $debt_amount);
                 $debt_stmt->bindParam(":customer_id", $customer_id);
+                $debt_stmt->bindParam(":tenant_id", $tenant_id);
                 $debt_stmt->execute();
             }
 
@@ -484,7 +502,8 @@ class SalesAPI {
 
     // DELETE api/sales (Delete existing sale)
     public static function delete($db, $data) {
-        Auth::authenticate($db);
+        $user = Auth::authenticate($db);
+        $tenant_id = $user['tenant_id'];
 
         $sale_id = isset($data['sale_id']) ? intval($data['sale_id']) : 0;
         if ($sale_id <= 0) {
@@ -495,7 +514,7 @@ class SalesAPI {
             $db->beginTransaction();
 
             // Fetch old sale
-            $old_sale_stmt = $db->prepare("SELECT * FROM sales WHERE id = :id");
+            $old_sale_stmt = $db->prepare("SELECT * FROM sales WHERE id = :id AND tenant_id = :tenant_id");
             $old_sale_stmt->bindParam(":id", $sale_id);
             $old_sale_stmt->execute();
             $old_sale = $old_sale_stmt->fetch();
@@ -505,13 +524,13 @@ class SalesAPI {
             }
 
             // Fetch old items
-            $old_items_stmt = $db->prepare("SELECT * FROM sale_items WHERE sale_id = :id");
+            $old_items_stmt = $db->prepare("SELECT * FROM sale_items WHERE sale_id = :id AND tenant_id = :tenant_id");
             $old_items_stmt->bindParam(":id", $sale_id);
             $old_items_stmt->execute();
             $old_items = $old_items_stmt->fetchAll();
 
             // Revert old stock
-            $revert_stock_stmt = $db->prepare("UPDATE products SET stock = stock + :qty WHERE id = :id");
+            $revert_stock_stmt = $db->prepare("UPDATE products SET stock = stock + :qty WHERE id = :id AND tenant_id = :tenant_id");
             foreach ($old_items as $old_item) {
                 if ($old_item['item_type'] === 'product' && $old_item['product_id']) {
                     $revert_stock_stmt->bindParam(":qty", $old_item['quantity']);
@@ -522,19 +541,19 @@ class SalesAPI {
 
             // Revert old debt
             if ($old_sale['debt_amount'] > 0 && $old_sale['customer_id']) {
-                $revert_debt_stmt = $db->prepare("UPDATE customers SET total_debt = total_debt - :debt WHERE id = :cust_id");
+                $revert_debt_stmt = $db->prepare("UPDATE customers SET total_debt = total_debt - :debt WHERE id = :cust_id AND tenant_id = :tenant_id");
                 $revert_debt_stmt->bindParam(":debt", $old_sale['debt_amount']);
                 $revert_debt_stmt->bindParam(":cust_id", $old_sale['customer_id']);
                 $revert_debt_stmt->execute();
             }
 
             // Delete items
-            $delete_items_stmt = $db->prepare("DELETE FROM sale_items WHERE sale_id = :id");
+            $delete_items_stmt = $db->prepare("DELETE FROM sale_items WHERE sale_id = :id AND tenant_id = :tenant_id");
             $delete_items_stmt->bindParam(":id", $sale_id);
             $delete_items_stmt->execute();
 
             // Delete sale
-            $delete_sale_stmt = $db->prepare("DELETE FROM sales WHERE id = :id");
+            $delete_sale_stmt = $db->prepare("DELETE FROM sales WHERE id = :id AND tenant_id = :tenant_id");
             $delete_sale_stmt->bindParam(":id", $sale_id);
             $delete_sale_stmt->execute();
 
@@ -550,13 +569,15 @@ class SalesAPI {
 
     // DELETE api/sales/all (Delete all sales)
     public static function deleteAll($db) {
-        Auth::authenticate($db);
+        $user = Auth::authenticate($db);
+        $tenant_id = $user['tenant_id'];
 
         try {
             $db->beginTransaction();
 
             // Fetch all sales
-            $old_sales_stmt = $db->prepare("SELECT * FROM sales");
+            $old_sales_stmt = $db->prepare("SELECT * FROM sales WHERE tenant_id = :tenant_id");
+            $old_sales_stmt->bindParam(":tenant_id", $tenant_id);
             $old_sales_stmt->execute();
             $old_sales = $old_sales_stmt->fetchAll();
 
@@ -564,13 +585,13 @@ class SalesAPI {
                 $sale_id = $old_sale['id'];
                 
                 // Fetch items
-                $old_items_stmt = $db->prepare("SELECT * FROM sale_items WHERE sale_id = :id");
+                $old_items_stmt = $db->prepare("SELECT * FROM sale_items WHERE sale_id = :id AND tenant_id = :tenant_id");
                 $old_items_stmt->bindParam(":id", $sale_id);
                 $old_items_stmt->execute();
                 $old_items = $old_items_stmt->fetchAll();
 
                 // Revert stock
-                $revert_stock_stmt = $db->prepare("UPDATE products SET stock = stock + :qty WHERE id = :id");
+                $revert_stock_stmt = $db->prepare("UPDATE products SET stock = stock + :qty WHERE id = :id AND tenant_id = :tenant_id");
                 foreach ($old_items as $old_item) {
                     if ($old_item['item_type'] === 'product' && $old_item['product_id']) {
                         $revert_stock_stmt->bindParam(":qty", $old_item['quantity']);
@@ -581,7 +602,7 @@ class SalesAPI {
 
                 // Revert debt
                 if ($old_sale['debt_amount'] > 0 && $old_sale['customer_id']) {
-                    $revert_debt_stmt = $db->prepare("UPDATE customers SET total_debt = total_debt - :debt WHERE id = :cust_id");
+                    $revert_debt_stmt = $db->prepare("UPDATE customers SET total_debt = total_debt - :debt WHERE id = :cust_id AND tenant_id = :tenant_id");
                     $revert_debt_stmt->bindParam(":debt", $old_sale['debt_amount']);
                     $revert_debt_stmt->bindParam(":cust_id", $old_sale['customer_id']);
                     $revert_debt_stmt->execute();
@@ -589,8 +610,13 @@ class SalesAPI {
             }
 
             // Delete all items and sales
-            $db->exec("DELETE FROM sale_items");
-            $db->exec("DELETE FROM sales");
+            $del_items = $db->prepare("DELETE FROM sale_items WHERE tenant_id = :tenant_id");
+            $del_items->bindParam(":tenant_id", $tenant_id);
+            $del_items->execute();
+            
+            $del_sales = $db->prepare("DELETE FROM sales WHERE tenant_id = :tenant_id");
+            $del_sales->bindParam(":tenant_id", $tenant_id);
+            $del_sales->execute();
 
             $db->commit();
 

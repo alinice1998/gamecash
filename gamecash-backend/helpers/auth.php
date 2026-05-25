@@ -49,7 +49,7 @@ class Auth {
         }
 
         // Look up token in DB
-        $query = "SELECT t.user_id, u.username, u.role, t.expires_at 
+        $query = "SELECT t.user_id, u.username, u.role, u.tenant_id, t.expires_at 
                   FROM user_tokens t 
                   JOIN users u ON t.user_id = u.id 
                   WHERE t.token = :token LIMIT 1";
@@ -77,6 +77,7 @@ class Auth {
 
         return [
             "id" => $token_data['user_id'],
+            "tenant_id" => $token_data['tenant_id'],
             "username" => $token_data['username'],
             "role" => $token_data['role']
         ];

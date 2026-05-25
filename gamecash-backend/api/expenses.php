@@ -7,10 +7,12 @@ require_once __DIR__ . "/../helpers/response.php";
 class ExpensesAPI {
     // GET api/expenses
     public static function list($db) {
-        Auth::authenticate($db);
+        $user = Auth::authenticate($db);
+        $tenant_id = $user['tenant_id'];
 
-        $query = "SELECT * FROM expenses ORDER BY created_at DESC LIMIT 200";
+        $query = "SELECT * FROM expenses WHERE tenant_id = :tenant_id ORDER BY created_at DESC LIMIT 200";
         $stmt = $db->prepare($query);
+        $stmt->bindParam(":tenant_id", $tenant_id);
         $stmt->execute();
         $expenses = $stmt->fetchAll();
 
@@ -19,7 +21,8 @@ class ExpensesAPI {
 
     // POST api/expenses
     public static function create($db, $data) {
-        Auth::authenticate($db);
+        $user = Auth::authenticate($db);
+        $tenant_id = $user['tenant_id'];
 
         $category = isset($data['category']) ? trim($data['category']) : '';
         $amount = isset($data['amount']) ? floatval($data['amount']) : 0.00;
@@ -29,8 +32,9 @@ class ExpensesAPI {
             Response::error("بيانات غير صالحة. يجب إدخال تصنيف الفئة وقيمة المصروف.");
         }
 
-        $query = "INSERT INTO expenses (category, amount, notes) VALUES (:category, :amount, :notes)";
+        $query = "INSERT INTO expenses (tenant_id, category, amount, notes) VALUES (:tenant_id, :category, :amount, :notes)";
         $stmt = $db->prepare($query);
+        $stmt->bindParam(":tenant_id", $tenant_id);
         $stmt->bindParam(":category", $category);
         $stmt->bindParam(":amount", $amount);
         $stmt->bindParam(":notes", $notes);
@@ -51,7 +55,8 @@ class ExpensesAPI {
 
     // DELETE api/expenses
     public static function delete($db, $data) {
-        Auth::authenticate($db);
+        $user = Auth::authenticate($db);
+        $tenant_id = $user['tenant_id'];
 
         $id = isset($data['id']) ? intval($data['id']) : 0;
 
@@ -59,9 +64,10 @@ class ExpensesAPI {
             Response::error("معرف المصروف غير صالح.");
         }
 
-        $query = "DELETE FROM expenses WHERE id = :id";
+        $query = "DELETE FROM expenses WHERE id = :id AND tenant_id = :tenant_id";
         $stmt = $db->prepare($query);
         $stmt->bindParam(":id", $id);
+        $stmt->bindParam(":tenant_id", $tenant_id);
 
         if ($stmt->execute()) {
             Response::success(null, "تم حذف المصروف بنجاح.");
@@ -70,3 +76,4 @@ class ExpensesAPI {
         }
     }
 }
+

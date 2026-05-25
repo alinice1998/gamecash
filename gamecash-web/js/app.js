@@ -1191,9 +1191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.payoffCustomer.innerHTML = '<option value="">-- اختر عميلاً لسداد دينه --</option>';
         state.customers.forEach(c => {
             const debt = parseFloat(c.total_debt);
-            if (debt > 0) {
-                dom.payoffCustomer.innerHTML += `<option value="${c.id}">${c.name} (دين: ${formatNumber(debt)} ل.س)</option>`;
-            }
+            dom.payoffCustomer.innerHTML += `<option value="${c.id}">${c.name} (دين: ${formatNumber(debt)} ل.س)</option>`;
         });
 
         // Hide preview by default
@@ -1217,7 +1215,6 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.payoffDebtPreviewBox.classList.remove('hidden');
             dom.payoffCurrentDebtVal.textContent = `${formatNumber(debt)} ل.س`;
             dom.payoffSubmitBtn.disabled = false;
-            dom.payoffAmount.max = debt;
         }
     });
 
@@ -1230,15 +1227,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!customerId || isNaN(amount) || amount <= 0) return;
 
         const customer = state.customers.find(c => c.id === customerId);
-        if (amount > parseFloat(customer.total_debt)) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'تجاوز مبلغ الدين',
-                text: 'المبلغ المدفوع أكبر من إجمالي الدين القائم المترتب على الزبون.',
-                confirmButtonText: 'حسناً'
-            });
-            return;
-        }
 
         const confirm = await Swal.fire({
             title: 'تأكيد استلام كاش؟',

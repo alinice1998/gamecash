@@ -81,6 +81,11 @@ switch ($route) {
         AuthAPI::check($db);
         break;
 
+    case 'api/auth/register_tenant':
+        require_once __DIR__ . "/api/auth.php";
+        AuthAPI::registerTenant($db, $input_data);
+        break;
+
     // DASHBOARD ROUTE
     case 'api/dashboard':
         require_once __DIR__ . "/api/dashboard.php";
