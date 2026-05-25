@@ -5,14 +5,12 @@ require_once __DIR__ . "/config/database.php";
 require_once __DIR__ . "/helpers/response.php";
 
 try {
-    $db_host = "localhost";
-    $db_name = "gamecash";
-    $db_user = "root";
-    $db_pass = "";
+    $database = new Database();
+    $pdo = $database->getConnection();
 
-    // Connect without DB to run DROP/CREATE commands safely first
-    $pdo = new PDO("mysql:host=" . $db_host, $db_user, $db_pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    if (!$pdo) {
+        die(json_encode(["success" => false, "message" => "Setup failed: Could not connect to database. Please check config/database.php."]));
+    }
 
     $schema_file = __DIR__ . "/config/schema.sql";
     if (!file_exists($schema_file)) {
@@ -21,10 +19,24 @@ try {
 
     $sql = file_get_contents($schema_file);
 
-    // Execute the full schema (assuming XAMPP root without password)
+    // Remove DROP DATABASE / CREATE DATABASE / USE as shared hosts don't allow it
+    $sql = preg_replace('/DROP DATABASE IF EXISTS `gamecash`;/i', '', $sql);
+    $sql = preg_replace('/CREATE DATABASE `gamecash`[^;]*;/i', '', $sql);
+    $sql = preg_replace('/USE `gamecash`;/i', '', $sql);
+
+    // Disable foreign keys to drop existing tables without errors
+    $pdo->exec("SET FOREIGN_KEY_CHECKS=0;");
+
+    // Drop old tables to force recreating them with the new tenant_id columns
+    $pdo->exec("DROP TABLE IF EXISTS `user_tokens`, `users`, `sale_items`, `sales`, `expenses`, `telecom_companies`, `customer_payments`, `customers`, `products`, `tenants`;");
+
+    // Execute the modified schema
     $pdo->exec($sql);
 
-    echo json_encode(["success" => true, "message" => "Database schema updated successfully for Multi-Tenant architecture. All default data seeded."]);
+    // Re-enable foreign keys
+    $pdo->exec("SET FOREIGN_KEY_CHECKS=1;");
+
+    echo json_encode(["success" => true, "message" => "Database schema updated successfully for Multi-Tenant architecture. All tables recreated and default data seeded."]);
 
 } catch (PDOException $e) {
     echo json_encode(["success" => false, "message" => "Setup failed: " . $e->getMessage()]);
