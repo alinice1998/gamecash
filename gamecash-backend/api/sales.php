@@ -280,6 +280,7 @@ class SalesAPI {
             // Fetch old sale
             $old_sale_stmt = $db->prepare("SELECT * FROM sales WHERE id = :id AND tenant_id = :tenant_id");
             $old_sale_stmt->bindParam(":id", $sale_id);
+            $old_sale_stmt->bindParam(":tenant_id", $tenant_id);
             $old_sale_stmt->execute();
             $old_sale = $old_sale_stmt->fetch();
 
@@ -290,6 +291,7 @@ class SalesAPI {
             // Fetch old items
             $old_items_stmt = $db->prepare("SELECT * FROM sale_items WHERE sale_id = :id AND tenant_id = :tenant_id");
             $old_items_stmt->bindParam(":id", $sale_id);
+            $old_items_stmt->bindParam(":tenant_id", $tenant_id);
             $old_items_stmt->execute();
             $old_items = $old_items_stmt->fetchAll();
 
@@ -299,6 +301,7 @@ class SalesAPI {
                 if ($old_item['item_type'] === 'product' && $old_item['product_id']) {
                     $revert_stock_stmt->bindParam(":qty", $old_item['quantity']);
                     $revert_stock_stmt->bindParam(":id", $old_item['product_id']);
+                    $revert_stock_stmt->bindParam(":tenant_id", $tenant_id);
                     $revert_stock_stmt->execute();
                 }
             }
@@ -308,12 +311,14 @@ class SalesAPI {
                 $revert_debt_stmt = $db->prepare("UPDATE customers SET total_debt = total_debt - :debt WHERE id = :cust_id AND tenant_id = :tenant_id");
                 $revert_debt_stmt->bindParam(":debt", $old_sale['debt_amount']);
                 $revert_debt_stmt->bindParam(":cust_id", $old_sale['customer_id']);
+                $revert_debt_stmt->bindParam(":tenant_id", $tenant_id);
                 $revert_debt_stmt->execute();
             }
 
             // Delete old items
             $delete_items_stmt = $db->prepare("DELETE FROM sale_items WHERE sale_id = :id AND tenant_id = :tenant_id");
             $delete_items_stmt->bindParam(":id", $sale_id);
+            $delete_items_stmt->bindParam(":tenant_id", $tenant_id);
             $delete_items_stmt->execute();
 
             // 1. Calculate and verify totals for new items
@@ -516,6 +521,7 @@ class SalesAPI {
             // Fetch old sale
             $old_sale_stmt = $db->prepare("SELECT * FROM sales WHERE id = :id AND tenant_id = :tenant_id");
             $old_sale_stmt->bindParam(":id", $sale_id);
+            $old_sale_stmt->bindParam(":tenant_id", $tenant_id);
             $old_sale_stmt->execute();
             $old_sale = $old_sale_stmt->fetch();
 
@@ -526,6 +532,7 @@ class SalesAPI {
             // Fetch old items
             $old_items_stmt = $db->prepare("SELECT * FROM sale_items WHERE sale_id = :id AND tenant_id = :tenant_id");
             $old_items_stmt->bindParam(":id", $sale_id);
+            $old_items_stmt->bindParam(":tenant_id", $tenant_id);
             $old_items_stmt->execute();
             $old_items = $old_items_stmt->fetchAll();
 
@@ -535,6 +542,7 @@ class SalesAPI {
                 if ($old_item['item_type'] === 'product' && $old_item['product_id']) {
                     $revert_stock_stmt->bindParam(":qty", $old_item['quantity']);
                     $revert_stock_stmt->bindParam(":id", $old_item['product_id']);
+                    $revert_stock_stmt->bindParam(":tenant_id", $tenant_id);
                     $revert_stock_stmt->execute();
                 }
             }
@@ -544,17 +552,20 @@ class SalesAPI {
                 $revert_debt_stmt = $db->prepare("UPDATE customers SET total_debt = total_debt - :debt WHERE id = :cust_id AND tenant_id = :tenant_id");
                 $revert_debt_stmt->bindParam(":debt", $old_sale['debt_amount']);
                 $revert_debt_stmt->bindParam(":cust_id", $old_sale['customer_id']);
+                $revert_debt_stmt->bindParam(":tenant_id", $tenant_id);
                 $revert_debt_stmt->execute();
             }
 
             // Delete items
             $delete_items_stmt = $db->prepare("DELETE FROM sale_items WHERE sale_id = :id AND tenant_id = :tenant_id");
             $delete_items_stmt->bindParam(":id", $sale_id);
+            $delete_items_stmt->bindParam(":tenant_id", $tenant_id);
             $delete_items_stmt->execute();
 
             // Delete sale
             $delete_sale_stmt = $db->prepare("DELETE FROM sales WHERE id = :id AND tenant_id = :tenant_id");
             $delete_sale_stmt->bindParam(":id", $sale_id);
+            $delete_sale_stmt->bindParam(":tenant_id", $tenant_id);
             $delete_sale_stmt->execute();
 
             $db->commit();
@@ -587,6 +598,7 @@ class SalesAPI {
                 // Fetch items
                 $old_items_stmt = $db->prepare("SELECT * FROM sale_items WHERE sale_id = :id AND tenant_id = :tenant_id");
                 $old_items_stmt->bindParam(":id", $sale_id);
+                $old_items_stmt->bindParam(":tenant_id", $tenant_id);
                 $old_items_stmt->execute();
                 $old_items = $old_items_stmt->fetchAll();
 
@@ -596,6 +608,7 @@ class SalesAPI {
                     if ($old_item['item_type'] === 'product' && $old_item['product_id']) {
                         $revert_stock_stmt->bindParam(":qty", $old_item['quantity']);
                         $revert_stock_stmt->bindParam(":id", $old_item['product_id']);
+                        $revert_stock_stmt->bindParam(":tenant_id", $tenant_id);
                         $revert_stock_stmt->execute();
                     }
                 }
@@ -605,6 +618,7 @@ class SalesAPI {
                     $revert_debt_stmt = $db->prepare("UPDATE customers SET total_debt = total_debt - :debt WHERE id = :cust_id AND tenant_id = :tenant_id");
                     $revert_debt_stmt->bindParam(":debt", $old_sale['debt_amount']);
                     $revert_debt_stmt->bindParam(":cust_id", $old_sale['customer_id']);
+                    $revert_debt_stmt->bindParam(":tenant_id", $tenant_id);
                     $revert_debt_stmt->execute();
                 }
             }
