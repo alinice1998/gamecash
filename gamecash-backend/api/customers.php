@@ -10,9 +10,22 @@ class CustomersAPI {
         $user = Auth::authenticate($db);
         $tenant_id = $user['tenant_id'];
 
-        $query = "SELECT * FROM customers WHERE tenant_id = :tenant_id ORDER BY name ASC";
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $query = "SELECT * FROM customers WHERE tenant_id = :tenant_id";
+        
+        if ($search !== '') {
+            $query .= " AND name LIKE :search";
+        }
+        
+        $query .= " ORDER BY name ASC";
+
         $stmt = $db->prepare($query);
         $stmt->bindParam(":tenant_id", $tenant_id);
+        if ($search !== '') {
+            $searchTerm = "%$search%";
+            $stmt->bindParam(":search", $searchTerm);
+        }
+        
         $stmt->execute();
         $customers = $stmt->fetchAll();
 
@@ -223,6 +236,91 @@ class CustomersAPI {
         } catch (Exception $e) {
             $db->rollBack();
             Response::error("فشل تسجيل دفعة السداد: " . $e->getMessage());
+        }
+    }
+
+    // GET api/customers/statement (Get Statement of Account with running balance)
+    public static function getStatement($db) {
+        $user = Auth::authenticate($db);
+        $tenant_id = $user['tenant_id'];
+
+        $customer_id = isset($_GET['customer_id']) ? intval($_GET['customer_id']) : 0;
+        if ($customer_id <= 0) {
+            Response::error("العميل غير محدد.");
+        }
+
+        try {
+            // First verify customer exists and get initial debt if needed, though we can compute it
+            $cust_query = "SELECT name, total_debt FROM customers WHERE id = :id AND tenant_id = :tenant_id";
+            $cust_stmt = $db->prepare($cust_query);
+            $cust_stmt->bindParam(":id", $customer_id);
+            $cust_stmt->bindParam(":tenant_id", $tenant_id);
+            $cust_stmt->execute();
+            $customer = $cust_stmt->fetch();
+
+            if (!$customer) {
+                Response::error("العميل غير موجود.");
+            }
+
+            // Fetch all transactions for this customer, sorted ASCENDING to calculate running balance
+            $query = "
+            SELECT * FROM (
+                SELECT 
+                    id, total_amount, paid_amount, debt_amount, notes, created_at, 'sale' as record_type
+                FROM sales 
+                WHERE customer_id = :customer_id AND tenant_id = :tenant_id
+                UNION ALL
+                SELECT 
+                    id, 0 as total_amount, amount_paid as paid_amount, 0 as debt_amount, notes, created_at, 'payment' as record_type
+                FROM customer_payments 
+                WHERE customer_id = :customer_id AND tenant_id = :tenant_id
+            ) as t
+            ORDER BY t.created_at ASC
+            ";
+            
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(":customer_id", $customer_id);
+            $stmt->bindParam(":tenant_id", $tenant_id);
+            $stmt->execute();
+            $transactions = $stmt->fetchAll();
+
+            $statement = [];
+            $running_balance = 0.0;
+
+            foreach ($transactions as $tx) {
+                $isPayment = ($tx['record_type'] === 'payment');
+                
+                // Calculate balance: old_balance + debt_from_sale - paid_amount_from_payment
+                if ($isPayment) {
+                    $running_balance -= floatval($tx['paid_amount']);
+                } else {
+                    $running_balance += floatval($tx['debt_amount']);
+                }
+
+                $statement[] = [
+                    'id' => $tx['id'],
+                    'record_type' => $tx['record_type'],
+                    'total_amount' => floatval($tx['total_amount']),
+                    'paid_amount' => floatval($tx['paid_amount']),
+                    'debt_amount' => floatval($tx['debt_amount']),
+                    'notes' => $tx['notes'],
+                    'created_at' => $tx['created_at'],
+                    'running_balance' => $running_balance,
+                    'is_payment' => $isPayment
+                ];
+            }
+
+            // We want to return the array in DESCENDING order for the UI (newest first)
+            $statement_desc = array_reverse($statement);
+
+            Response::success([
+                'customer_name' => $customer['name'],
+                'current_debt' => floatval($customer['total_debt']),
+                'statement' => $statement_desc
+            ], "تم جلب كشف الحساب بنجاح.");
+
+        } catch (Exception $e) {
+            Response::error("فشل جلب كشف الحساب: " . $e->getMessage());
         }
     }
 }

@@ -135,6 +135,15 @@ switch ($route) {
         }
         break;
 
+    case 'api/customers/statement':
+        require_once __DIR__ . "/api/customers.php";
+        if ($method === 'GET') {
+            CustomersAPI::getStatement($db);
+        } else {
+            Response::notFound("طريقة الطلب غير مدعومة.");
+        }
+        break;
+
     // TELECOM API ROUTES
     case 'api/telecom':
         require_once __DIR__ . "/api/telecom.php";
@@ -142,6 +151,16 @@ switch ($route) {
             TelecomAPI::list($db);
         } elseif ($method === 'POST') {
             TelecomAPI::createCompany($db, $input_data);
+        } else {
+            Response::notFound("طريقة الطلب غير مدعومة.");
+        }
+        break;
+
+    // TRANSACTIONS ROUTE (Unified)
+    case 'api/transactions':
+        require_once __DIR__ . "/api/transactions.php";
+        if ($method === 'GET') {
+            TransactionsAPI::list($db);
         } else {
             Response::notFound("طريقة الطلب غير مدعومة.");
         }
