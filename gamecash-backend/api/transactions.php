@@ -54,13 +54,13 @@ class TransactionsAPI {
                     s.id, s.customer_id, s.total_amount, s.paid_amount, s.debt_amount, s.notes, s.created_at, c.name as customer_name, 'sale' as record_type
                 FROM sales s 
                 LEFT JOIN customers c ON s.customer_id = c.id 
-                WHERE s.tenant_id = :tenant_id
+                WHERE s.tenant_id = :tenant_id_sales
                 UNION ALL
                 SELECT 
                     p.id, p.customer_id, 0 as total_amount, p.amount_paid as paid_amount, 0 as debt_amount, p.notes, p.created_at, c.name as customer_name, 'payment' as record_type
                 FROM customer_payments p 
                 LEFT JOIN customers c ON p.customer_id = c.id 
-                WHERE p.tenant_id = :tenant_id
+                WHERE p.tenant_id = :tenant_id_payments
             ) as t
             ";
 
@@ -71,7 +71,8 @@ class TransactionsAPI {
             $query .= " ORDER BY t.created_at DESC LIMIT :limit OFFSET :offset";
 
             $stmt = $db->prepare($query);
-            $stmt->bindParam(":tenant_id", $tenant_id);
+            $stmt->bindParam(":tenant_id_sales", $tenant_id);
+            $stmt->bindParam(":tenant_id_payments", $tenant_id);
             if ($search !== '') {
                 $stmt->bindParam(":search", $searchTerm);
             }

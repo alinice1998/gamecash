@@ -268,19 +268,21 @@ class CustomersAPI {
                 SELECT 
                     id, total_amount, paid_amount, debt_amount, notes, created_at, 'sale' as record_type
                 FROM sales 
-                WHERE customer_id = :customer_id AND tenant_id = :tenant_id
+                WHERE customer_id = :customer_id_sales AND tenant_id = :tenant_id_sales
                 UNION ALL
                 SELECT 
                     id, 0 as total_amount, amount_paid as paid_amount, 0 as debt_amount, notes, created_at, 'payment' as record_type
                 FROM customer_payments 
-                WHERE customer_id = :customer_id AND tenant_id = :tenant_id
+                WHERE customer_id = :customer_id_payments AND tenant_id = :tenant_id_payments
             ) as t
             ORDER BY t.created_at ASC
             ";
             
             $stmt = $db->prepare($query);
-            $stmt->bindParam(":customer_id", $customer_id);
-            $stmt->bindParam(":tenant_id", $tenant_id);
+            $stmt->bindParam(":customer_id_sales", $customer_id);
+            $stmt->bindParam(":tenant_id_sales", $tenant_id);
+            $stmt->bindParam(":customer_id_payments", $customer_id);
+            $stmt->bindParam(":tenant_id_payments", $tenant_id);
             $stmt->execute();
             $transactions = $stmt->fetchAll();
 
