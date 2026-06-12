@@ -146,7 +146,7 @@ class CustomersAPI {
                       FROM customer_payments p 
                       JOIN customers c ON p.customer_id = c.id 
                       WHERE p.tenant_id = :tenant_id 
-                      ORDER BY p.created_at DESC LIMIT 100";
+                      ORDER BY p.created_at DESC LIMIT 5000";
             $stmt = $db->prepare($query);
             $stmt->bindParam(":tenant_id", $tenant_id);
         }

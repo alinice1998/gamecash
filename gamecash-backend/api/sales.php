@@ -16,7 +16,7 @@ class SalesAPI {
                       FROM sales s 
                       LEFT JOIN customers c ON s.customer_id = c.id 
                       WHERE s.tenant_id = :tenant_id
-                      ORDER BY s.created_at DESC LIMIT 150";
+                      ORDER BY s.created_at DESC LIMIT 5000";
             $stmt = $db->prepare($query);
             $stmt->bindParam(":tenant_id", $tenant_id);
             $stmt->execute();
